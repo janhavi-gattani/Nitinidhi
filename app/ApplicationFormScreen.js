@@ -288,7 +288,7 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
       });
 
       const response = await fetch(
-        `https://7e3777787c19.ngrok-free.app/api/job-vacancies/${JOB_ID}/apply/`,
+        `https://cdfd8e09fcfe.ngrok-free.app/api/job-vacancies/${JOB_ID}/apply/`,
         {
           method: 'POST',
           headers: {

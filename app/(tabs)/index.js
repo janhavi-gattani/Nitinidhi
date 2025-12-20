@@ -14,7 +14,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authenticatedFetch } from '../Tokenutils';
-import { API_ENDPOINTS } from './Config';
+import { API_ENDPOINTS } from '../Config';
 // Import all your screen components
 import ComplaintFormScreen from '../ComplaintFormScreen';
 import SchemesScreen from '../SchemesScreen';

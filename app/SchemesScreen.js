@@ -1,6 +1,5 @@
 
-
-// import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect, useRef } from 'react';
 // import { 
 //   StyleSheet, 
 //   Text, 
@@ -30,9 +29,21 @@
 //   const [isSpeaking, setIsSpeaking] = useState(false);
 //   const [currentHighlight, setCurrentHighlight] = useState(null); // 'eligible', 'explore', or null
 
+//   // Ref to track voiceEnabled during async operations
+//   const voiceEnabledRef = useRef(voiceEnabled);
+
 //   // Animation values for highlighting
 //   const eligiblePulseAnim = useState(new Animated.Value(1))[0];
 //   const explorePulseAnim = useState(new Animated.Value(1))[0];
+
+//   // Update ref when voiceEnabled changes
+//   useEffect(() => {
+//     voiceEnabledRef.current = voiceEnabled;
+//     // If voice was disabled while speaking, stop immediately
+//     if (!voiceEnabled && isSpeaking) {
+//       stopVoiceGuidance();
+//     }
+//   }, [voiceEnabled]);
 
 //   useEffect(() => {
 //     // Play welcome guidance after component mounts
@@ -85,7 +96,7 @@
 //   };
 
 //   const playVoiceGuidance = async () => {
-//     if (!voiceEnabled) return;
+//     if (!voiceEnabledRef.current) return;
 
 //     const messages = {
 //       english: {
@@ -107,29 +118,38 @@
 //       const languageCode = language === 'hindi' ? 'hi-IN' : 'en-US';
 
 //       // Welcome message
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       await speakMessage(messages[language].welcome, languageCode);
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       await delay(500);
 
 //       // Highlight and explain Eligible Schemes
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       setCurrentHighlight('eligible');
 //       await speakMessage(messages[language].eligible, languageCode);
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       setCurrentHighlight(null);
 //       stopPulseAnimation(eligiblePulseAnim);
 //       await delay(500);
 
 //       // Highlight and explain Explore Schemes
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       setCurrentHighlight('explore');
 //       await speakMessage(messages[language].explore, languageCode);
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       setCurrentHighlight(null);
 //       stopPulseAnimation(explorePulseAnim);
 //       await delay(500);
 
 //       // Outro message
+//       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
 //       await speakMessage(messages[language].outro, languageCode);
 
 //       setIsSpeaking(false);
 //     } catch (error) {
-//       console.error('Error playing voice guidance:', error);
+//       if (error.message !== 'Voice disabled') {
+//         console.error('Error playing voice guidance:', error);
+//       }
 //       setIsSpeaking(false);
 //       setCurrentHighlight(null);
 //       stopPulseAnimation(eligiblePulseAnim);
@@ -164,22 +184,23 @@
 //     }
 //   };
 
-//   const handleLanguageChange = (newLanguage) => {
+//   const handleLanguageChange = async (newLanguage) => {
 //     setLanguage(newLanguage);
-//     stopVoiceGuidance();
+//     await stopVoiceGuidance();
 //   };
 
-//   const handleVoiceToggle = (value) => {
+//   const handleVoiceToggle = async (value) => {
 //     setVoiceEnabled(value);
+//     voiceEnabledRef.current = value; // Update ref immediately
 //     if (!value) {
-//       stopVoiceGuidance();
+//       await stopVoiceGuidance();
 //     }
 //   };
 
-//   const handleReplayGuidance = () => {
-//     stopVoiceGuidance();
+//   const handleReplayGuidance = async () => {
+//     await stopVoiceGuidance();
 //     setTimeout(() => {
-//       if (voiceEnabled) {
+//       if (voiceEnabledRef.current) {
 //         playVoiceGuidance();
 //       }
 //     }, 300);
@@ -741,155 +762,132 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  StatusBar, 
-  SafeAreaView,
-  Platform,
-  Switch,
-  Animated,
+  StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, 
+  SafeAreaView, Platform, Switch, Animated, Modal,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-
-// Use default imports since both files use "export default"
 import EligibleSchemesScreen from './EligibleSchemesScreen';
 import ExploreSchemes from './ExploreSchemes';
+
+const translations = {
+  english: {
+    headerTitle: 'Schemes', search: 'Search', bannerMain: 'Samagra Shiksha', bannerSub: 'समग्र शिक्षा',
+    voiceGuidance: 'Voice Guidance', enableVoice: 'Enable Voice', replayGuidance: 'Replay Guidance',
+    stopVoice: 'Stop Voice', eligibleSchemes: 'Eligible Schemes', eligibleSchemesDesc: 'Find schemes you qualify for',
+    exploreSchemes: 'Explore Schemes', exploreSchemesDesc: 'Browse all available schemes', selectLanguage: 'Select Language',
+    voiceMessages: {
+      welcome: "Welcome to the Schemes page. Here you can find government schemes that may benefit you.",
+      eligible: "The Eligible Schemes button shows you all the government schemes that you are eligible for based on your profile.",
+      explore: "The Explore Schemes button lets you browse all available government schemes and learn more about them.",
+      outro: "Tap on any button to get started.",
+    }
+  },
+  hindi: {
+    headerTitle: 'योजनाएं', search: 'खोजें', bannerMain: 'समग्र शिक्षा', bannerSub: 'Samagra Shiksha',
+    voiceGuidance: 'आवाज मार्गदर्शन', enableVoice: 'आवाज सक्षम करें', replayGuidance: 'मार्गदर्शन दोबारा चलाएं',
+    stopVoice: 'आवाज बंद करें', eligibleSchemes: 'योग्य योजनाएं', eligibleSchemesDesc: 'जिन योजनाओं के लिए आप पात्र हैं',
+    exploreSchemes: 'योजनाओं का अन्वेषण करें', exploreSchemesDesc: 'सभी उपलब्ध योजनाओं को ब्राउज़ करें', selectLanguage: 'भाषा चुनें',
+    voiceMessages: {
+      welcome: "योजनाओं के पृष्ठ में आपका स्वागत है। यहां आप सरकारी योजनाएं पा सकते हैं जो आपके लिए फायदेमंद हो सकती हैं।",
+      eligible: "योग्य योजनाएं बटन आपको आपकी प्रोफ़ाइल के आधार पर सभी सरकारी योजनाएं दिखाता है जिनके लिए आप पात्र हैं।",
+      explore: "योजनाओं का अन्वेषण करें बटन आपको सभी उपलब्ध सरकारी योजनाओं को ब्राउज़ करने और उनके बारे में अधिक जानने देता है।",
+      outro: "शुरू करने के लिए किसी भी बटन पर टैप करें।",
+    }
+  },
+  marathi: {
+    headerTitle: 'योजना', search: 'शोधा', bannerMain: 'समग्र शिक्षा', bannerSub: 'Samagra Shiksha',
+    voiceGuidance: 'आवाज मार्गदर्शन', enableVoice: 'आवाज सक्षम करा', replayGuidance: 'मार्गदर्शन पुन्हा चालवा',
+    stopVoice: 'आवाज बंद करा', eligibleSchemes: 'पात्र योजना', eligibleSchemesDesc: 'तुम्ही पात्र असलेल्या योजना शोधा',
+    exploreSchemes: 'योजनांचा शोध घ्या', exploreSchemesDesc: 'सर्व उपलब्ध योजना पहा', selectLanguage: 'भाषा निवडा',
+    voiceMessages: {
+      welcome: "योजना पृष्ठावर आपले स्वागत आहे. येथे तुम्ही तुमच्यासाठी फायदेशीर असलेल्या सरकारी योजना शोधू शकता.",
+      eligible: "पात्र योजना बटण तुम्हाला तुमच्या प्रोफाईलच्या आधारे तुम्ही पात्र असलेल्या सर्व सरकारी योजना दाखवते.",
+      explore: "योजनांचा शोध घ्या बटण तुम्हाला सर्व उपलब्ध सरकारी योजना पाहण्याची आणि त्यांच्याबद्दल अधिक जाणून घेण्याची संधी देते.",
+      outro: "सुरुवात करण्यासाठी कोणत्याही बटणावर टॅप करा.",
+    }
+  }
+};
 
 const SchemesScreen = ({ onBack }) => {
   const [showEligible, setShowEligible] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
-
-  // Voice guidance states
+  const [language, setLanguage] = useState('english');
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [language, setLanguage] = useState('english'); // 'english' or 'hindi'
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [currentHighlight, setCurrentHighlight] = useState(null); // 'eligible', 'explore', or null
-
-  // Ref to track voiceEnabled during async operations
+  const [currentHighlight, setCurrentHighlight] = useState(null);
   const voiceEnabledRef = useRef(voiceEnabled);
-
-  // Animation values for highlighting
   const eligiblePulseAnim = useState(new Animated.Value(1))[0];
   const explorePulseAnim = useState(new Animated.Value(1))[0];
+  const t = translations[language];
 
-  // Update ref when voiceEnabled changes
   useEffect(() => {
     voiceEnabledRef.current = voiceEnabled;
-    // If voice was disabled while speaking, stop immediately
-    if (!voiceEnabled && isSpeaking) {
-      stopVoiceGuidance();
-    }
+    if (!voiceEnabled && isSpeaking) stopVoiceGuidance();
   }, [voiceEnabled]);
 
   useEffect(() => {
-    // Play welcome guidance after component mounts
     const timer = setTimeout(() => {
-      if (voiceEnabled) {
-        playVoiceGuidance();
-      }
+      if (voiceEnabled) playVoiceGuidance();
     }, 500);
-
-    // Cleanup function
-    return () => {
-      clearTimeout(timer);
-      Speech.stop();
-    };
+    return () => { clearTimeout(timer); Speech.stop(); };
   }, []);
 
-  // Animate highlighted button
   useEffect(() => {
-    if (currentHighlight === 'eligible') {
-      startPulseAnimation(eligiblePulseAnim);
-    } else if (currentHighlight === 'explore') {
-      startPulseAnimation(explorePulseAnim);
-    }
+    if (currentHighlight === 'eligible') startPulseAnimation(eligiblePulseAnim);
+    else if (currentHighlight === 'explore') startPulseAnimation(explorePulseAnim);
   }, [currentHighlight]);
 
-  const startPulseAnimation = (animValue) => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(animValue, {
-          toValue: 1.05,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animValue, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+  const startPulseAnimation = (v) => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(v, { toValue: 1.05, duration: 600, useNativeDriver: true }),
+      Animated.timing(v, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ])).start();
   };
 
-  const stopPulseAnimation = (animValue) => {
-    animValue.stopAnimation();
-    Animated.timing(animValue, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
+  const stopPulseAnimation = (v) => {
+    v.stopAnimation();
+    Animated.timing(v, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+  };
+
+  const getLanguageCode = () => {
+    switch(language) {
+      case 'hindi': return 'hi-IN';
+      case 'marathi': return 'mr-IN';
+      default: return 'en-US';
+    }
   };
 
   const playVoiceGuidance = async () => {
     if (!voiceEnabledRef.current) return;
-
-    const messages = {
-      english: {
-        welcome: "Welcome to the Schemes page. Here you can find government schemes that may benefit you.",
-        eligible: "The Eligible Schemes button shows you all the government schemes that you are eligible for based on your profile.",
-        explore: "The Explore Schemes button lets you browse all available government schemes and learn more about them.",
-        outro: "Tap on any button to get started.",
-      },
-      hindi: {
-        welcome: "योजनाओं के पृष्ठ में आपका स्वागत है। यहां आप सरकारी योजनाएं पा सकते हैं जो आपके लिए फायदेमंद हो सकती हैं।",
-        eligible: "योग्य योजनाएं बटन आपको आपकी प्रोफ़ाइल के आधार पर सभी सरकारी योजनाएं दिखाता है जिनके लिए आप पात्र हैं।",
-        explore: "योजनाओं का अन्वेषण करें बटन आपको सभी उपलब्ध सरकारी योजनाओं को ब्राउज़ करने और उनके बारे में अधिक जानने देता है।",
-        outro: "शुरू करने के लिए किसी भी बटन पर टैप करें।",
-      },
-    };
-
+    const m = t.voiceMessages;
     try {
       setIsSpeaking(true);
-      const languageCode = language === 'hindi' ? 'hi-IN' : 'en-US';
-
-      // Welcome message
+      const lc = getLanguageCode();
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
-      await speakMessage(messages[language].welcome, languageCode);
+      await speakMessage(m.welcome, lc);
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
       await delay(500);
-
-      // Highlight and explain Eligible Schemes
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
       setCurrentHighlight('eligible');
-      await speakMessage(messages[language].eligible, languageCode);
+      await speakMessage(m.eligible, lc);
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
       setCurrentHighlight(null);
       stopPulseAnimation(eligiblePulseAnim);
       await delay(500);
-
-      // Highlight and explain Explore Schemes
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
       setCurrentHighlight('explore');
-      await speakMessage(messages[language].explore, languageCode);
+      await speakMessage(m.explore, lc);
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
       setCurrentHighlight(null);
       stopPulseAnimation(explorePulseAnim);
       await delay(500);
-
-      // Outro message
       if (!voiceEnabledRef.current) throw new Error('Voice disabled');
-      await speakMessage(messages[language].outro, languageCode);
-
+      await speakMessage(m.outro, lc);
       setIsSpeaking(false);
-    } catch (error) {
-      if (error.message !== 'Voice disabled') {
-        console.error('Error playing voice guidance:', error);
-      }
+    } catch (e) {
+      if (e.message !== 'Voice disabled') console.error('Error:', e);
       setIsSpeaking(false);
       setCurrentHighlight(null);
       stopPulseAnimation(eligiblePulseAnim);
@@ -897,20 +895,11 @@ const SchemesScreen = ({ onBack }) => {
     }
   };
 
-  const speakMessage = (message, languageCode) => {
-    return new Promise((resolve, reject) => {
-      Speech.speak(message, {
-        language: languageCode,
-        pitch: 1.0,
-        rate: 0.85,
-        onDone: resolve,
-        onStopped: resolve,
-        onError: reject,
-      });
-    });
-  };
+  const speakMessage = (msg, lc) => new Promise((res, rej) => {
+    Speech.speak(msg, { language: lc, pitch: 1.0, rate: 0.85, onDone: res, onStopped: res, onError: rej });
+  });
 
-  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
   const stopVoiceGuidance = async () => {
     try {
@@ -919,262 +908,140 @@ const SchemesScreen = ({ onBack }) => {
       setCurrentHighlight(null);
       stopPulseAnimation(eligiblePulseAnim);
       stopPulseAnimation(explorePulseAnim);
-    } catch (error) {
-      console.error('Error stopping voice guidance:', error);
-    }
+    } catch (e) { console.error('Error stopping:', e); }
   };
 
-  const handleLanguageChange = async (newLanguage) => {
-    setLanguage(newLanguage);
+  const handleLanguageChange = async (nl) => {
+    setLanguage(nl);
+    setShowLanguageModal(false);
     await stopVoiceGuidance();
+    setTimeout(() => { if (voiceEnabledRef.current) playVoiceGuidance(); }, 300);
   };
 
-  const handleVoiceToggle = async (value) => {
-    setVoiceEnabled(value);
-    voiceEnabledRef.current = value; // Update ref immediately
-    if (!value) {
-      await stopVoiceGuidance();
-    }
+  const handleVoiceToggle = async (v) => {
+    setVoiceEnabled(v);
+    voiceEnabledRef.current = v;
+    if (!v) await stopVoiceGuidance();
   };
 
   const handleReplayGuidance = async () => {
     await stopVoiceGuidance();
-    setTimeout(() => {
-      if (voiceEnabledRef.current) {
-        playVoiceGuidance();
-      }
-    }, 300);
+    setTimeout(() => { if (voiceEnabledRef.current) playVoiceGuidance(); }, 300);
   };
 
-  // If Eligible Schemes clicked, show that screen
-  if (showEligible) {
-    return <EligibleSchemesScreen onBack={() => setShowEligible(false)} />;
-  }
-
-  // If Explore Schemes clicked, show that screen
-  if (showExplore) {
-    return <ExploreSchemes onBack={() => setShowExplore(false)} />;
-  }
+  if (showEligible) return <EligibleSchemesScreen onBack={() => setShowEligible(false)} />;
+  if (showExplore) return <ExploreSchemes onBack={() => setShowExplore(false)} />;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.c}>
       <StatusBar barStyle="light-content" backgroundColor="#1E3A8A" />
-      
-      {/* Header matching other screens style */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+      <View style={s.h}>
+        <View style={s.ht}>
+          <TouchableOpacity onPress={onBack} style={s.bb}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Schemes</Text>
-
-          <TouchableOpacity 
-            onPress={isSpeaking ? stopVoiceGuidance : null}
-            style={styles.headerIcons}
-          >
-            {isSpeaking && (
-              <MaterialCommunityIcons name="volume-high" size={24} color="#FFF" />
-            )}
-          </TouchableOpacity>
+          <Text style={s.htl}>{t.headerTitle}</Text>
+          <View style={s.hr}>
+            {isSpeaking && <MaterialCommunityIcons name="volume-high" size={20} color="#FFF" style={{marginRight:8}} />}
+            <TouchableOpacity onPress={() => setShowLanguageModal(true)} style={s.lib}>
+              <MaterialCommunityIcons name="translate" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
-        
-        <View style={styles.searchBar}>
-          <Text style={styles.searchPlaceholder}>Search</Text>
+        <View style={s.sb}>
+          <Text style={s.sp}>{t.search}</Text>
           <Ionicons name="search" size={20} color="#94a3b8" />
         </View>
       </View>
 
-      {/* Schemes Content */}
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Banner */}
-        <View style={styles.bannerContainer}>
-          <View style={styles.bannerPlaceholder}>
-            <MaterialCommunityIcons name="school" size={40} color="#FFF" style={{opacity: 0.8}} />
-            <Text style={styles.bannerTextMain}>समग्र शिक्षा</Text>
-            <Text style={styles.bannerTextSub}>Samagra Shiksha</Text>
-            <View style={[styles.bannerOverlayLine, { transform: [{ rotate: '45deg' }], left: -20 }]} />
-            <View style={[styles.bannerOverlayLine, { transform: [{ rotate: '45deg' }], left: 40 }]} />
+      <Modal visible={showLanguageModal} transparent animationType="fade" onRequestClose={() => setShowLanguageModal(false)}>
+        <TouchableOpacity style={s.mo} activeOpacity={1} onPress={() => setShowLanguageModal(false)}>
+          <View style={s.mc}>
+            <Text style={s.mt}>{t.selectLanguage}</Text>
+            {['english', 'hindi', 'marathi'].map(l => (
+              <TouchableOpacity key={l} style={[s.lo, language===l && s.loa]} onPress={() => handleLanguageChange(l)}>
+                <Text style={[s.lot, language===l && s.lota]}>
+                  {l==='english'?'English':l==='hindi'?'हिंदी (Hindi)':'मराठी (Marathi)'}
+                </Text>
+                {language===l && <Ionicons name="checkmark-circle" size={24} color="#1E3A8A" />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={s.mcb} onPress={() => setShowLanguageModal(false)}>
+              <Text style={s.mcbt}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <ScrollView style={s.sv} contentContainerStyle={s.svc} showsVerticalScrollIndicator={false}>
+        <View style={s.bnc}>
+          <View style={s.bnp}>
+            <MaterialCommunityIcons name="school" size={40} color="#FFF" style={{opacity:0.8}} />
+            <Text style={s.bm}>{t.bannerMain}</Text>
+            <Text style={s.bs}>{t.bannerSub}</Text>
+            <View style={[s.bol, {transform:[{rotate:'45deg'}], left:-20}]} />
+            <View style={[s.bol, {transform:[{rotate:'45deg'}], left:40}]} />
           </View>
         </View>
 
-        {/* Voice Guidance Controls */}
-        <View style={styles.voiceControlsContainer}>
-          <View style={styles.sectionHeader}>
+        <View style={s.vcc}>
+          <View style={s.shd}>
             <MaterialCommunityIcons name="account-voice" size={20} color="#1E3A8A" />
-            <Text style={styles.sectionTitle}>Voice Guidance</Text>
+            <Text style={s.st}>{t.voiceGuidance}</Text>
           </View>
-          
-          <View style={styles.voiceControls}>
-            {/* Voice On/Off */}
-            <View style={styles.controlRow}>
-              <View style={styles.controlLabel}>
-                <MaterialCommunityIcons 
-                  name={voiceEnabled ? "volume-high" : "volume-off"} 
-                  size={20} 
-                  color="#1E3A8A" 
-                />
-                <Text style={styles.controlText}>Enable Voice</Text>
+          <View style={s.vc}>
+            <View style={s.cr}>
+              <View style={s.cl}>
+                <MaterialCommunityIcons name={voiceEnabled?"volume-high":"volume-off"} size={20} color="#1E3A8A" />
+                <Text style={s.ct}>{t.enableVoice}</Text>
               </View>
-              <Switch
-                value={voiceEnabled}
-                onValueChange={handleVoiceToggle}
-                trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
-                thumbColor={voiceEnabled ? '#1E3A8A' : '#64748B'}
-              />
-            </View>
-
-            {/* Language Selection */}
-            <View style={styles.controlRow}>
-              <View style={styles.controlLabel}>
-                <MaterialCommunityIcons name="translate" size={20} color="#1E3A8A" />
-                <Text style={styles.controlText}>Language</Text>
-              </View>
-              <View style={styles.languageButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.languageButton,
-                    language === 'english' && styles.languageButtonActive
-                  ]}
-                  onPress={() => handleLanguageChange('english')}
-                >
-                  <Text style={[
-                    styles.languageButtonText,
-                    language === 'english' && styles.languageButtonTextActive
-                  ]}>
-                    English
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.languageButton,
-                    language === 'hindi' && styles.languageButtonActive
-                  ]}
-                  onPress={() => handleLanguageChange('hindi')}
-                >
-                  <Text style={[
-                    styles.languageButtonText,
-                    language === 'hindi' && styles.languageButtonTextActive
-                  ]}>
-                    हिंदी
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <Switch value={voiceEnabled} onValueChange={handleVoiceToggle} trackColor={{false:'#CBD5E1',true:'#93C5FD'}} thumbColor={voiceEnabled?'#1E3A8A':'#64748B'} />
             </View>
           </View>
-
-          {/* Replay and Stop Buttons */}
-          <View style={styles.voiceActionButtons}>
+          <View style={s.vab}>
             {isSpeaking ? (
-              <TouchableOpacity 
-                style={styles.stopSpeakingButton}
-                onPress={stopVoiceGuidance}
-              >
+              <TouchableOpacity style={s.ssb} onPress={stopVoiceGuidance}>
                 <MaterialCommunityIcons name="stop-circle" size={20} color="#EF4444" />
-                <Text style={styles.stopSpeakingText}>Stop Voice</Text>
+                <Text style={s.sst}>{t.stopVoice}</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity 
-                style={styles.replayButton}
-                onPress={handleReplayGuidance}
-                disabled={!voiceEnabled}
-              >
-                <MaterialCommunityIcons 
-                  name="replay" 
-                  size={20} 
-                  color={voiceEnabled ? "#1E3A8A" : "#CBD5E1"} 
-                />
-                <Text style={[
-                  styles.replayButtonText,
-                  !voiceEnabled && styles.replayButtonTextDisabled
-                ]}>
-                  Replay Guidance
-                </Text>
+              <TouchableOpacity style={s.rb} onPress={handleReplayGuidance} disabled={!voiceEnabled}>
+                <MaterialCommunityIcons name="replay" size={20} color={voiceEnabled?"#1E3A8A":"#CBD5E1"} />
+                <Text style={[s.rbt, !voiceEnabled && s.rbtd]}>{t.replayGuidance}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <Animated.View
-            style={[
-              styles.animatedButtonWrapper,
-              {
-                transform: [{ scale: eligiblePulseAnim }],
-              },
-            ]}
-          >
-            <TouchableOpacity 
-              style={[
-                styles.actionButton,
-                currentHighlight === 'eligible' && styles.actionButtonHighlighted
-              ]}
-              onPress={() => setShowEligible(true)}
-              disabled={isSpeaking}
-            >
-              <View style={styles.actionIconContainer}>
-                <MaterialCommunityIcons name="clipboard-text-outline" size={32} color="#1F2937" />
+        <View style={s.abc}>
+          <Animated.View style={[s.abw, {transform:[{scale:eligiblePulseAnim}]}]}>
+            <TouchableOpacity style={[s.ab, currentHighlight==='eligible'&&s.abh]} onPress={() => setShowEligible(true)} disabled={isSpeaking}>
+              <View style={s.aic}><MaterialCommunityIcons name="clipboard-text-outline" size={32} color="#1F2937" /></View>
+              <View style={s.abtc}>
+                <Text style={s.abt}>{t.eligibleSchemes}</Text>
+                <Text style={s.abst}>{t.eligibleSchemesDesc}</Text>
               </View>
-              <View style={styles.actionButtonTextContainer}>
-                <Text style={styles.actionButtonText}>Eligible Schemes</Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Find schemes you qualify for
-                </Text>
-              </View>
-              {currentHighlight === 'eligible' && (
-                <View style={styles.highlightIndicator}>
-                  <MaterialCommunityIcons name="volume-high" size={20} color="#1E3A8A" />
-                </View>
-              )}
+              {currentHighlight==='eligible'&&<View style={s.hi}><MaterialCommunityIcons name="volume-high" size={20} color="#1E3A8A" /></View>}
             </TouchableOpacity>
           </Animated.View>
 
-          <Animated.View
-            style={[
-              styles.animatedButtonWrapper,
-              {
-                transform: [{ scale: explorePulseAnim }],
-              },
-            ]}
-          >
-            <TouchableOpacity 
-              style={[
-                styles.actionButton,
-                currentHighlight === 'explore' && styles.actionButtonHighlighted
-              ]}
-              onPress={() => setShowExplore(true)}
-              disabled={isSpeaking}
-            >
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="search-outline" size={32} color="#1F2937" />
+          <Animated.View style={[s.abw, {transform:[{scale:explorePulseAnim}]}]}>
+            <TouchableOpacity style={[s.ab, currentHighlight==='explore'&&s.abh]} onPress={() => setShowExplore(true)} disabled={isSpeaking}>
+              <View style={s.aic}><Ionicons name="search-outline" size={32} color="#1F2937" /></View>
+              <View style={s.abtc}>
+                <Text style={s.abt}>{t.exploreSchemes}</Text>
+                <Text style={s.abst}>{t.exploreSchemesDesc}</Text>
               </View>
-              <View style={styles.actionButtonTextContainer}>
-                <Text style={styles.actionButtonText}>Explore Schemes</Text>
-                <Text style={styles.actionButtonSubtext}>
-                  Browse all available schemes
-                </Text>
-              </View>
-              {currentHighlight === 'explore' && (
-                <View style={styles.highlightIndicator}>
-                  <MaterialCommunityIcons name="volume-high" size={20} color="#1E3A8A" />
-                </View>
-              )}
+              {currentHighlight==='explore'&&<View style={s.hi}><MaterialCommunityIcons name="volume-high" size={20} color="#1E3A8A" /></View>}
             </TouchableOpacity>
           </Animated.View>
         </View>
-
-        <View style={{ height: 100 }} />
+        <View style={{height:100}} />
       </ScrollView>
 
-      {/* Static AI Button */}
-      <View style={styles.fab}>
-        <View style={styles.fabInner}>
-          <Text style={styles.fabAiText}>AI</Text>
+      <View style={s.fab}>
+        <View style={s.fi}>
+          <Text style={s.fat}>AI</Text>
           <MaterialCommunityIcons name="message-text-outline" size={22} color="#1E3A8A" />
         </View>
       </View>
@@ -1182,319 +1049,30 @@ const SchemesScreen = ({ onBack }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  header: { 
-    backgroundColor: '#1E3A8A', 
-    padding: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTop: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 16 
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerIcons: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#EF4444',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  searchBar: { 
-    backgroundColor: '#fff', 
-    borderRadius: 12, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: 15, 
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    color: '#64748b',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  bannerContainer: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 20,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  bannerPlaceholder: {
-    height: 160,
-    backgroundColor: '#0F172A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  bannerTextMain: {
-    color: '#F97316',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  bannerTextSub: {
-    color: '#FFF',
-    fontSize: 14,
-    marginTop: 2,
-    fontStyle: 'italic',
-  },
-  bannerOverlayLine: {
-    position: 'absolute',
-    width: 300,
-    height: 20,
-    backgroundColor: '#FFF',
-    opacity: 0.1,
-  },
-  voiceControlsContainer: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E3A8A',
-  },
-  voiceControls: {
-    gap: 16,
-  },
-  controlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  controlLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  controlText: {
-    fontSize: 16,
-    color: '#0F172A',
-    fontWeight: '600',
-  },
-  languageButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  languageButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  languageButtonActive: {
-    backgroundColor: '#1E3A8A',
-    borderColor: '#1E3A8A',
-  },
-  languageButtonText: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  languageButtonTextActive: {
-    color: '#FFF',
-  },
-  voiceActionButtons: {
-    marginTop: 12,
-  },
-  stopSpeakingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  stopSpeakingText: {
-    fontSize: 14,
-    color: '#EF4444',
-    fontWeight: '600',
-  },
-  replayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#DBEAFE',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#93C5FD',
-  },
-  replayButtonText: {
-    fontSize: 14,
-    color: '#1E3A8A',
-    fontWeight: '600',
-  },
-  replayButtonTextDisabled: {
-    color: '#CBD5E1',
-  },
-  actionButtonsContainer: {
-    gap: 16,
-  },
-  animatedButtonWrapper: {
-    width: '100%',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#BFDBFE',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    position: 'relative',
-  },
-  actionButtonHighlighted: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
-    borderWidth: 3,
-    elevation: 8,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-  },
-  actionIconContainer: {
-    marginRight: 16,
-  },
-  actionButtonTextContainer: {
-    flex: 1,
-  },
-  actionButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  actionButtonSubtext: {
-    fontSize: 13,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  highlightIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FFF',
-    padding: 6,
-    borderRadius: 20,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  fab: { 
-    position: 'absolute', 
-    bottom: 20, 
-    right: 20, 
-    backgroundColor: '#fde047', 
-    width: 60, 
-    height: 60, 
-    borderRadius: 30, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    shadowOpacity: 0.3, 
-    shadowRadius: 5, 
-    elevation: 8 
-  },
-  fabInner: { 
-    alignItems: 'center', 
-    justifyContent: 'center' 
-  },
-  fabAiText: { 
-    fontSize: 10, 
-    fontWeight: '900', 
-    color: '#1E3A8A', 
-    marginBottom: -2 
-  },
+const s = StyleSheet.create({
+  c:{flex:1,backgroundColor:'#f3f4f6'}, h:{backgroundColor:'#1E3A8A',padding:20,paddingTop:Platform.OS==='android'?40:20,paddingBottom:20,borderBottomLeftRadius:20,borderBottomRightRadius:20},
+  ht:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:16}, bb:{width:40,height:40,justifyContent:'center',alignItems:'center'},
+  htl:{color:'#FFF',fontSize:18,fontWeight:'bold',flex:1,textAlign:'center'}, hr:{flexDirection:'row',alignItems:'center',width:40,justifyContent:'flex-end'},
+  lib:{width:40,height:40,justifyContent:'center',alignItems:'center'}, sb:{backgroundColor:'#fff',borderRadius:12,flexDirection:'row',alignItems:'center',paddingHorizontal:15,height:48,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.1,shadowRadius:4,elevation:3},
+  sp:{flex:1,color:'#64748b',fontSize:16,fontWeight:'500'}, sv:{flex:1}, svc:{padding:20}, bnc:{borderRadius:16,overflow:'hidden',marginBottom:20,elevation:4,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.2,shadowRadius:4},
+  bnp:{height:160,backgroundColor:'#0F172A',justifyContent:'center',alignItems:'center',position:'relative'}, bm:{color:'#F97316',fontSize:24,fontWeight:'bold',marginTop:10},
+  bs:{color:'#FFF',fontSize:14,marginTop:2,fontStyle:'italic'}, bol:{position:'absolute',width:300,height:20,backgroundColor:'#FFF',opacity:0.1},
+  vcc:{backgroundColor:'#FFF',padding:16,borderRadius:12,marginBottom:20,borderWidth:1,borderColor:'#E5E7EB',shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.1,shadowRadius:4,elevation:3},
+  shd:{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}, st:{fontSize:16,fontWeight:'bold',color:'#1E3A8A'}, vc:{gap:16},
+  cr:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}, cl:{flexDirection:'row',alignItems:'center',gap:8}, ct:{fontSize:16,color:'#0F172A',fontWeight:'600'},
+  vab:{marginTop:12}, ssb:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingVertical:10,paddingHorizontal:16,backgroundColor:'#FEE2E2',borderRadius:8,borderWidth:1,borderColor:'#FCA5A5'},
+  sst:{fontSize:14,color:'#EF4444',fontWeight:'600'}, rb:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,paddingVertical:10,paddingHorizontal:16,backgroundColor:'#DBEAFE',borderRadius:8,borderWidth:1,borderColor:'#93C5FD'},
+  rbt:{fontSize:14,color:'#1E3A8A',fontWeight:'600'}, rbtd:{color:'#CBD5E1'}, abc:{gap:16}, abw:{width:'100%'},
+  ab:{flexDirection:'row',alignItems:'center',backgroundColor:'#DBEAFE',borderRadius:12,padding:20,borderWidth:2,borderColor:'#BFDBFE',elevation:2,shadowColor:'#000',shadowOffset:{width:0,height:1},shadowOpacity:0.1,shadowRadius:2,position:'relative'},
+  abh:{backgroundColor:'#FEF3C7',borderColor:'#FCD34D',borderWidth:3,elevation:8,shadowColor:'#F59E0B',shadowOffset:{width:0,height:4},shadowOpacity:0.4,shadowRadius:8},
+  aic:{marginRight:16}, abtc:{flex:1}, abt:{fontSize:18,fontWeight:'bold',color:'#111827',marginBottom:4}, abst:{fontSize:13,color:'#4B5563',fontWeight:'500'},
+  hi:{position:'absolute',top:10,right:10,backgroundColor:'#FFF',padding:6,borderRadius:20,elevation:4,shadowColor:'#000',shadowOffset:{width:0,height:2},shadowOpacity:0.2,shadowRadius:4},
+  fab:{position:'absolute',bottom:20,right:20,backgroundColor:'#fde047',width:60,height:60,borderRadius:30,justifyContent:'center',alignItems:'center',shadowOpacity:0.3,shadowRadius:5,elevation:8},
+  fi:{alignItems:'center',justifyContent:'center'}, fat:{fontSize:10,fontWeight:'900',color:'#1E3A8A',marginBottom:-2},
+  mo:{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',alignItems:'center'}, mc:{backgroundColor:'#FFF',borderRadius:16,padding:24,width:'85%',maxWidth:400},
+  mt:{fontSize:20,fontWeight:'bold',color:'#1E3A8A',marginBottom:20,textAlign:'center'}, lo:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',padding:16,borderRadius:12,borderWidth:1,borderColor:'#E5E7EB',marginBottom:12,backgroundColor:'#F9FAFB'},
+  loa:{backgroundColor:'#DBEAFE',borderColor:'#3B82F6',borderWidth:2}, lot:{fontSize:16,color:'#374151',fontWeight:'500'}, lota:{color:'#1E3A8A',fontWeight:'700'},
+  mcb:{marginTop:8,padding:14,backgroundColor:'#E5E7EB',borderRadius:8,alignItems:'center'}, mcbt:{color:'#374151',fontSize:16,fontWeight:'600'},
 });
 
 export default SchemesScreen;

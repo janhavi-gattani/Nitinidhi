@@ -42,7 +42,7 @@ function NewsScreen({ onBack }) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch('https://7e3777787c19.ngrok-free.app/api/news', {
+      const response = await fetch('https://cdfd8e09fcfe.ngrok-free.app/api/news', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

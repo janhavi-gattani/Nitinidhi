@@ -1762,7 +1762,7 @@ const ExploreSchemes = ({ onBack }) => {
       for (const category of CATEGORIES) {
         try {
           const response = await fetch(
-            `https://7e3777787c19.ngrok-free.app/api/schemes?department=${category.name}`,
+            `https://cdfd8e09fcfe.ngrok-free.app/api/schemes?department=${category.name}`,
             {
               method: 'GET',
               headers: {
@@ -1809,7 +1809,7 @@ const ExploreSchemes = ({ onBack }) => {
       }
 
       const response = await fetch(
-        `https://7e3777787c19.ngrok-free.app/api/schemes?department=${categoryName}`,
+        `https://cdfd8e09fcfe.ngrok-free.app/api/schemes?department=${categoryName}`,
         {
           method: 'GET',
           headers: {

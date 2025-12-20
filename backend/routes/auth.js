@@ -327,7 +327,7 @@ router.post('/token', async (req, res) => {
     }
 
     const response = await axios.post(
-      'https://7e3777787c19.ngrok-free.app/api/auth/token/',
+      'https://cdfd8e09fcfe.ngrok-free.app/api/auth/token/',
       {
         username,
         password,

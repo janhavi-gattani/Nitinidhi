@@ -99,7 +99,7 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
       console.log('Fetching user data with token...');
 
       const response = await fetch(
-        `https://7e3777787c19.ngrok-free.app/api/users/${USER_ID}`,
+        `https://cdfd8e09fcfe.ngrok-free.app/api/users/${USER_ID}`,
         {
           method: 'GET',
           headers: {
@@ -308,7 +308,7 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
       console.log('Submitting complaint:', complaintData);
 
       const response = await fetch(
-        'https://7e3777787c19.ngrok-free.app/api/complaints/',
+        'https://cdfd8e09fcfe.ngrok-free.app/api/complaints/',
         {
           method: 'POST',
           headers: {

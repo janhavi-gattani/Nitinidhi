@@ -739,7 +739,6 @@
 // });
 
 // export default DocumentsScreen;
-
 import React, { useState } from 'react';
 import {
   StyleSheet,
@@ -751,26 +750,78 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  Modal,
+  Clipboard,
+  Alert,
 } from 'react-native';
 import { 
   Ionicons,
   MaterialCommunityIcons
 } from '@expo/vector-icons';
+import QRCode from 'react-native-qrcode-svg';
 
 // --- Constants ---
 const VERIFIED_DOCUMENTS = [
-  { id: '1', name: 'Aadhar Card', timestamp: '2min ago', verified: true },
-  { id: '2', name: 'Pan Card', timestamp: '2min ago', verified: true },
-  { id: '4', name: 'Birth Certificate', timestamp: '1 hour ago', verified: true },
+  { 
+    id: '1', 
+    name: 'Aadhar Card', 
+    timestamp: '2min ago', 
+    verified: true,
+    docId: 'ADHR-2024-1234-5678',
+    docHash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6'
+  },
+  { 
+    id: '2', 
+    name: 'Pan Card', 
+    timestamp: '2min ago', 
+    verified: true,
+    docId: 'PAN-2024-ABCD-1234',
+    docHash: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7'
+  },
+  { 
+    id: '4', 
+    name: 'Birth Certificate', 
+    timestamp: '1 hour ago', 
+    verified: true,
+    docId: 'BRTH-2024-9876-5432',
+    docHash: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8'
+  },
 ];
 
 // --- Main Component ---
 function VerifiedDocuments({ onBack }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const filteredDocs = VERIFIED_DOCUMENTS.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleBackPress = () => {
+    console.log('Back button pressed');
+    if (onBack) {
+      onBack();
+    } else {
+      console.log('Warning: No onBack handler provided');
+    }
+  };
+
+  const handleDocPress = (doc) => {
+    console.log('Opening document:', doc.name);
+    setSelectedDoc(doc);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedDoc(null);
+  };
+
+  const copyToClipboard = (text, label) => {
+    Clipboard.setString(text);
+    Alert.alert('Copied!', `${label} copied to clipboard`);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -779,7 +830,10 @@ function VerifiedDocuments({ onBack }) {
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity 
+            onPress={handleBackPress} 
+            style={styles.backButton}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
 
@@ -807,14 +861,22 @@ function VerifiedDocuments({ onBack }) {
         </View>
       </View>
 
-      <ScrollView style={styles.mainScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.mainScroll} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <Text style={styles.pageTitle}>Your Verified Documents</Text>
 
         {/* Document List Card */}
         <View style={styles.documentListCard}>
           {filteredDocs.map((doc, index) => (
             <View key={doc.id}>
-              <TouchableOpacity style={styles.docItem}>
+              <TouchableOpacity 
+                style={styles.docItem}
+                onPress={() => handleDocPress(doc)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.pdfIconContainer}>
                   <MaterialCommunityIcons name="file-document-outline" size={32} color="#69bc7d" />
                   <Text style={styles.pdfLabel}>PDF</Text>
@@ -839,15 +901,115 @@ function VerifiedDocuments({ onBack }) {
           </View>
         )}
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Document Detail Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={handleCloseModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Document Details</Text>
+              <TouchableOpacity onPress={handleCloseModal}>
+                <Ionicons name="close" size={28} color="#1E3A8A" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedDoc && (
+                <>
+                  {/* Document Name */}
+                  <View style={styles.detailSection}>
+                    <View style={styles.iconNameRow}>
+                      <MaterialCommunityIcons name="file-document" size={40} color="#69bc7d" />
+                      <Text style={styles.docNameLarge}>{selectedDoc.name}</Text>
+                    </View>
+                    <View style={styles.verifiedBadgeLarge}>
+                      <MaterialCommunityIcons name="check-circle" size={20} color="#69bc7d" />
+                      <Text style={styles.verifiedText}>Verified Document</Text>
+                    </View>
+                  </View>
+
+                  {/* Document ID */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Document ID</Text>
+                    <View style={styles.copyableField}>
+                      <Text style={styles.detailValue}>{selectedDoc.docId}</Text>
+                      <TouchableOpacity 
+                        style={styles.copyButton}
+                        onPress={() => copyToClipboard(selectedDoc.docId, 'Document ID')}
+                      >
+                        <MaterialCommunityIcons name="content-copy" size={20} color="#1E3A8A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Document Hash */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Document Hash</Text>
+                    <View style={styles.copyableField}>
+                      <Text style={styles.detailValueHash}>{selectedDoc.docHash}</Text>
+                      <TouchableOpacity 
+                        style={styles.copyButton}
+                        onPress={() => copyToClipboard(selectedDoc.docHash, 'Document Hash')}
+                      >
+                        <MaterialCommunityIcons name="content-copy" size={20} color="#1E3A8A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* QR Code */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>QR Code</Text>
+                    <View style={styles.qrContainer}>
+                      <QRCode
+                        value={JSON.stringify({
+                          name: selectedDoc.name,
+                          docId: selectedDoc.docId,
+                          hash: selectedDoc.docHash,
+                          verified: true
+                        })}
+                        size={200}
+                        backgroundColor="white"
+                        color="#1E3A8A"
+                      />
+                      <Text style={styles.qrHelper}>Scan to verify document</Text>
+                    </View>
+                  </View>
+
+                  {/* Additional Info */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Timestamp</Text>
+                    <Text style={styles.detailValue}>{selectedDoc.timestamp}</Text>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={handleCloseModal}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Static AI Button */}
-      <View style={styles.fab}>
-        <View style={styles.fabInner}>
+      <View style={styles.fab} pointerEvents="box-none">
+        <TouchableOpacity 
+          style={styles.fabInner} 
+          activeOpacity={0.8}
+        >
           <Text style={styles.fabAiText}>AI</Text>
           <MaterialCommunityIcons name="message-text-outline" size={22} color="#1E3A8A" />
-        </View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -933,8 +1095,11 @@ const styles = StyleSheet.create({
     fontWeight: '500' 
   },
   mainScroll: { 
-    flex: 1, 
-    padding: 20 
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
   },
   pageTitle: { 
     fontSize: 20, 
@@ -1007,25 +1172,148 @@ const styles = StyleSheet.create({
     position: 'absolute', 
     bottom: 20, 
     right: 20, 
-    backgroundColor: '#fde047', 
-    width: 60, 
-    height: 60, 
-    borderRadius: 30, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    shadowOpacity: 0.3, 
-    shadowRadius: 5, 
-    elevation: 8 
+    zIndex: 999,
   },
   fabInner: { 
+    backgroundColor: '#fde047',
+    width: 60, 
+    height: 60, 
+    borderRadius: 30,
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3, 
+    shadowRadius: 5, 
+    elevation: 8,
   },
   fabAiText: { 
     fontSize: 10, 
     fontWeight: '900', 
     color: '#1E3A8A', 
     marginBottom: -2 
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E3A8A',
+  },
+  detailSection: {
+    marginBottom: 25,
+  },
+  iconNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  docNameLarge: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginLeft: 12,
+    flex: 1,
+  },
+  verifiedBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  verifiedText: {
+    color: '#69bc7d',
+    fontWeight: '600',
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailValueHash: {
+    fontSize: 12,
+    color: '#1e293b',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    flex: 1,
+  },
+  copyableField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  copyButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  qrContainer: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  qrHelper: {
+    marginTop: 15,
+    fontSize: 14,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
+  closeButton: {
+    backgroundColor: '#1E3A8A',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

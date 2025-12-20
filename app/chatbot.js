@@ -1,284 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-// Hardcoded demo responses
-const demoResponses = {
-  en: {
-    schemes: {
-      keywords: ['schemes', 'scheme', 'list', 'tell me', 'show', 'available', 'what are'],
-      response: `Here are some popular government schemes:
-
-1. PM-KISAN - Direct income support to farmers
-2. Ayushman Bharat - Health insurance for poor families
-3. Sukanya Samriddhi Yojana - Savings scheme for girl child
-4. PM Awas Yojana - Housing for all
-5. Pradhan Mantri Mudra Yojana - Financial support for small businesses
-
-Would you like to know more about any specific scheme?`
-    },
-    pmkisan: {
-      keywords: ['pm-kisan', 'pm kisan', 'kisan', 'farmer', 'agriculture'],
-      response: `PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)
-
-Eligibility:
-- All landholding farmers
-- Must have valid Aadhaar card
-- Bank account linked to Aadhaar
-
-Benefits:
-- ₹6,000 per year in 3 installments
-- Direct transfer to bank account
-
-How to Apply:
-1. Visit PM-KISAN portal
-2. Register with Aadhaar number
-3. Provide land details
-4. Submit online application
-
-For more details, visit: pmkisan.gov.in`
-    },
-    ayushman: {
-      keywords: ['ayushman', 'health', 'insurance', 'medical', 'hospital'],
-      response: `Ayushman Bharat (PM-JAY)
-
-Eligibility:
-- Bottom 40% of population (SECC data)
-- Annual income below ₹5 lakh
-- No upper age limit
-
-Benefits:
-- Health cover of ₹5 lakh per family/year
-- Cashless treatment at empanelled hospitals
-- Covers 1,400+ medical procedures
-
-How to Apply:
-1. Check eligibility at pmjay.gov.in
-2. Visit nearest Ayushman Mitra
-3. Provide Aadhaar and family details
-4. Get your card instantly`
-    },
-    sukanya: {
-      keywords: ['sukanya', 'girl', 'daughter', 'savings', 'education'],
-      response: `Sukanya Samriddhi Yojana
-
-Eligibility:
-- Girl child below 10 years
-- Parents or legal guardian can open account
-- Maximum 2 accounts per family
-
-Benefits:
-- High interest rate (currently 8.2%)
-- Tax benefits under 80C
-- Maturity after girl turns 21
-
-How to Apply:
-1. Visit any post office or authorized bank
-2. Fill account opening form
-3. Submit girl's birth certificate
-4. Minimum deposit: ₹250`
-    },
-    awas: {
-      keywords: ['awas', 'house', 'housing', 'home', 'construction'],
-      response: `PM Awas Yojana (Housing for All)
-
-Eligibility:
-- EWS/LIG/MIG income groups
-- Should not own pucca house
-- No family member should have availed Central assistance
-
-Benefits:
-- Subsidy on home loan interest
-- Direct financial assistance up to ₹2.5 lakh
-- Affordable housing units
-
-How to Apply:
-1. Visit pmaymis.gov.in
-2. Register with Aadhaar
-3. Fill online application
-4. Submit required documents`
-    },
-    mudra: {
-      keywords: ['mudra', 'loan', 'business', 'startup', 'entrepreneur'],
-      response: `Pradhan Mantri Mudra Yojana
-
-Eligibility:
-- Non-corporate, non-farm enterprises
-- New or existing small businesses
-- No collateral required
-
-Benefits:
-Three categories of loans:
-- Shishu: up to ₹50,000
-- Kishore: ₹50,000 to ₹5 lakh
-- Tarun: ₹5 lakh to ₹10 lakh
-
-How to Apply:
-1. Approach any bank/NBFC/MFI
-2. Submit business plan
-3. Provide KYC documents
-4. Get loan approval`
-    },
-    default: {
-      keywords: [],
-      response: `I can help you with information about government schemes. You can ask me:
-- "Tell me about different schemes"
-- "Explain PM-KISAN"
-- "What is Ayushman Bharat?"
-- "Tell me about Sukanya Samriddhi Yojana"
-- "Explain PM Awas Yojana"
-- "What is Mudra loan?"
-
-How can I assist you?`
-    }
-  },
-  hi: {
-    schemes: {
-      keywords: ['योजना', 'योजनाएं', 'बताओ', 'दिखाओ', 'कौन कौन', 'सरकारी'],
-      response: `यहाँ कुछ लोकप्रिय सरकारी योजनाएं हैं:
-
-1. पीएम-किसान - किसानों के लिए प्रत्यक्ष आय सहायता
-2. आयुष्मान भारत - गरीब परिवारों के लिए स्वास्थ्य बीमा
-3. सुकन्या समृद्धि योजना - बालिकाओं के लिए बचत योजना
-4. पीएम आवास योजना - सभी के लिए आवास
-5. प्रधानमंत्री मुद्रा योजना - छोटे व्यवसायों के लिए वित्तीय सहायता
-
-क्या आप किसी विशेष योजना के बारे में जानना चाहेंगे?`
-    },
-    pmkisan: {
-      keywords: ['किसान', 'पीएम-किसान', 'कृषि', 'खेती'],
-      response: `पीएम-किसान (प्रधानमंत्री किसान सम्मान निधि)
-
-पात्रता:
-- सभी भूमिधारक किसान
-- वैध आधार कार्ड होना चाहिए
-- बैंक खाता आधार से लिंक होना चाहिए
-
-लाभ:
-- प्रति वर्ष ₹6,000 तीन किस्तों में
-- बैंक खाते में सीधा हस्तांतरण
-
-आवेदन कैसे करें:
-1. PM-KISAN पोर्टल पर जाएं
-2. आधार नंबर से रजिस्टर करें
-3. भूमि विवरण प्रदान करें
-4. ऑनलाइन आवेदन जमा करें
-
-अधिक जानकारी के लिए: pmkisan.gov.in`
-    },
-    ayushman: {
-      keywords: ['आयुष्मान', 'स्वास्थ्य', 'बीमा', 'चिकित्सा', 'अस्पताल'],
-      response: `आयुष्मान भारत (PM-JAY)
-
-पात्रता:
-- जनसंख्या का निचला 40% (SECC डेटा)
-- वार्षिक आय ₹5 लाख से कम
-- कोई आयु सीमा नहीं
-
-लाभ:
-- प्रति परिवार/वर्ष ₹5 लाख का स्वास्थ्य कवर
-- सूचीबद्ध अस्पतालों में कैशलेस उपचार
-- 1,400+ चिकित्सा प्रक्रियाएं शामिल
-
-आवेदन कैसे करें:
-1. pmjay.gov.in पर पात्रता जांचें
-2. निकटतम आयुष्मान मित्र से मिलें
-3. आधार और परिवार विवरण दें
-4. तुरंत अपना कार्ड प्राप्त करें`
-    },
-    sukanya: {
-      keywords: ['सुकन्या', 'बेटी', 'बालिका', 'बचत', 'शिक्षा'],
-      response: `सुकन्या समृद्धि योजना
-
-पात्रता:
-- 10 वर्ष से कम उम्र की बालिका
-- माता-पिता या कानूनी अभिभावक खाता खोल सकते हैं
-- प्रति परिवार अधिकतम 2 खाते
-
-लाभ:
-- उच्च ब्याज दर (वर्तमान में 8.2%)
-- 80C के तहत कर लाभ
-- बालिका के 21 वर्ष की होने पर परिपक्वता
-
-आवेदन कैसे करें:
-1. किसी भी डाकघर या अधिकृत बैंक में जाएं
-2. खाता खोलने का फॉर्म भरें
-3. बालिका का जन्म प्रमाण पत्र जमा करें
-4. न्यूनतम जमा: ₹250`
-    },
-    awas: {
-      keywords: ['आवास', 'घर', 'मकान', 'निर्माण'],
-      response: `पीएम आवास योजना (सभी के लिए आवास)
-
-पात्रता:
-- EWS/LIG/MIG आय समूह
-- पक्का मकान नहीं होना चाहिए
-- किसी परिवार के सदस्य ने केंद्रीय सहायता का लाभ नहीं उठाया हो
-
-लाभ:
-- गृह ऋण ब्याज पर सब्सिडी
-- ₹2.5 लाख तक प्रत्यक्ष वित्तीय सहायता
-- किफायती आवास इकाइयां
-
-आवेदन कैसे करें:
-1. pmaymis.gov.in पर जाएं
-2. आधार से रजिस्टर करें
-3. ऑनलाइन आवेदन भरें
-4. आवश्यक दस्तावेज जमा करें`
-    },
-    mudra: {
-      keywords: ['मुद्रा', 'ऋण', 'लोन', 'व्यवसाय', 'बिजनेस'],
-      response: `प्रधानमंत्री मुद्रा योजना
-
-पात्रता:
-- गैर-कॉर्पोरेट, गैर-कृषि उद्यम
-- नया या मौजूदा छोटा व्यवसाय
-- कोई संपार्श्विक आवश्यक नहीं
-
-लाभ:
-ऋण की तीन श्रेणियां:
-- शिशु: ₹50,000 तक
-- किशोर: ₹50,000 से ₹5 लाख
-- तरुण: ₹5 लाख से ₹10 लाख
-
-आवेदन कैसे करें:
-1. किसी भी बैंक/NBFC/MFI से संपर्क करें
-2. व्यवसाय योजना प्रस्तुत करें
-3. KYC दस्तावेज़ प्रदान करें
-4. ऋण स्वीकृति प्राप्त करें`
-    },
-    default: {
-      keywords: [],
-      response: `मैं आपको सरकारी योजनाओं के बारे में जानकारी देने में मदद कर सकता हूं। आप मुझसे पूछ सकते हैं:
-- "विभिन्न योजनाओं के बारे में बताओ"
-- "पीएम-किसान समझाओ"
-- "आयुष्मान भारत क्या है?"
-- "सुकन्या समृद्धि योजना के बारे में बताओ"
-- "पीएम आवास योजना समझाओ"
-- "मुद्रा लोन क्या है?"
-
-मैं आपकी कैसे सहायता कर सकता हूं?`
-    }
-  }
-};
+// Replace with your Gemini API key
+const GEMINI_API_KEY = 'AIzaSyDMMxzemaTCMWyfYPULsPG5avkanYFjTq4';
 
 const ChatbotScreen = ({ onBack }) => {
   const [messages, setMessages] = useState([
     {
       id: '1',
-      text: 'Hello! I am your government schemes assistant. How can I help you today?',
+      text: 'Hello! I am your government schemes assistant powered by Google Gemini. I can help you find schemes, understand eligibility, benefits, and application processes. How can I help you today?',
       sender: 'bot',
       timestamp: new Date(),
       language: 'en'
@@ -288,7 +32,15 @@ const ChatbotScreen = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState('en');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [schemesData, setSchemesData] = useState([]);
+  const [isInitializing, setIsInitializing] = useState(true);
   const scrollViewRef = useRef(null);
+
+  // Fetch all schemes on component mount
+  useEffect(() => {
+    fetchAllSchemes();
+    testGeminiAPIKey(); // Test API key on mount
+  }, []);
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -296,8 +48,8 @@ const ChatbotScreen = ({ onBack }) => {
 
   useEffect(() => {
     const welcomeMessages = {
-      en: 'Hello! I am your government schemes assistant. How can I help you today?',
-      hi: 'नमस्ते! मैं आपका सरकारी योजना सहायक हूं। आज मैं आपकी कैसे मदद कर सकता हूं?'
+      en: 'Hello! I am your government schemes assistant powered by Google Gemini. I can help you find schemes, understand eligibility, benefits, and application processes. How can I help you today?',
+      hi: 'नमस्ते! मैं Google Gemini द्वारा संचालित आपका सरकारी योजना सहायक हूं। मैं आपको योजनाएं खोजने, पात्रता समझने, लाभ और आवेदन प्रक्रियाओं में मदद कर सकता हूं। आज मैं आपकी कैसे मदद कर सकता हूं?'
     };
 
     setMessages([{
@@ -309,24 +61,497 @@ const ChatbotScreen = ({ onBack }) => {
     }]);
   }, [language]);
 
-  const findBestResponse = (userMessage, lang) => {
-    const msg = userMessage.toLowerCase();
-    const responses = demoResponses[lang];
-
-    // Check each category for keyword matches
-    for (const [key, value] of Object.entries(responses)) {
-      if (key === 'default') continue;
-      
-      const hasMatch = value.keywords.some(keyword => 
-        msg.includes(keyword.toLowerCase())
+  const testGeminiAPIKey = async () => {
+    try {
+      console.log('Testing Gemini API key...');
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: "Hello"
+                  }
+                ]
+              }
+            ]
+          })
+        }
       );
+
+      if (response.ok) {
+        console.log('✅ Gemini API key is valid and working');
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error('❌ API key test failed:', errorText);
+        Alert.alert(
+          'API Key Issue',
+          'Your Gemini API key may not be working properly. The chatbot will use fallback responses.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ API key test error:', error);
+      return false;
+    }
+  };
+
+  const fetchAllSchemes = async () => {
+    try {
+      setIsInitializing(true);
+      const token = await AsyncStorage.getItem('@access_token');
       
-      if (hasMatch) {
-        return value.response;
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(
+        'https://cdfd8e09fcfe.ngrok-free.app/api/schemes',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch schemes');
+      }
+
+      const rawText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseError) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Handle both array and paginated response
+      let schemesList = [];
+      if (Array.isArray(data)) {
+        schemesList = data;
+      } else if (data.results && Array.isArray(data.results)) {
+        schemesList = data.results;
+      }
+
+      setSchemesData(schemesList);
+      console.log(`✅ Loaded ${schemesList.length} schemes for AI knowledge base`);
+    } catch (error) {
+      console.error('Error fetching schemes:', error);
+      Alert.alert('Warning', 'Could not load schemes data. Using limited functionality.');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  const getCategoryFromDepartment = (department) => {
+    if (!department) return 'Others';
+    
+    const dept = department.toLowerCase();
+    
+    if (dept.includes('agriculture') || dept.includes('farming') || dept.includes('krishi') || 
+        dept.includes('crop') || dept.includes('farmer') || dept.includes('kisan')) {
+      return 'Agriculture';
+    }
+    if (dept.includes('health') || dept.includes('medical') || dept.includes('hospital') ||
+        dept.includes('swasthya') || dept.includes('ayush') || dept.includes('clinic')) {
+      return 'Health';
+    }
+    if (dept.includes('finance') || dept.includes('bank') || dept.includes('economic') ||
+        dept.includes('business') || dept.includes('msme') || dept.includes('industry') ||
+        dept.includes('commerce') || dept.includes('trade') || dept.includes('startup') ||
+        dept.includes('entrepreneurship')) {
+      return 'Business';
+    }
+    if (dept.includes('education') || dept.includes('shiksha') || dept.includes('school') ||
+        dept.includes('university') || dept.includes('student') || dept.includes('scholarship')) {
+      return 'Education';
+    }
+    if (dept.includes('women') || dept.includes('child') || dept.includes('mahila') ||
+        dept.includes('girl') || dept.includes('mother') || dept.includes('female')) {
+      return 'Women';
+    }
+    if (dept.includes('housing') || dept.includes('urban') || dept.includes('awas') ||
+        dept.includes('home') || dept.includes('shelter') || dept.includes('rural development')) {
+      return 'Housing';
+    }
+    if (dept.includes('science') || dept.includes('technology') || dept.includes('research') ||
+        dept.includes('innovation') || dept.includes('vigyan') || dept.includes('dst')) {
+      return 'Science';
+    }
+    if (dept.includes('sports') || dept.includes('youth') || dept.includes('khel') ||
+        dept.includes('athletics') || dept.includes('physical')) {
+      return 'Sports';
+    }
+    if (dept.includes('police') || dept.includes('safety') || dept.includes('security') ||
+        dept.includes('disaster') || dept.includes('fire') || dept.includes('defense') ||
+        dept.includes('home affairs')) {
+      return 'Public Safety';
+    }
+    
+    return 'Others';
+  };
+
+  const parseBenefits = (benefits) => {
+    if (Array.isArray(benefits)) return benefits;
+    if (typeof benefits === 'string') {
+      try {
+        const parsed = JSON.parse(benefits);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        return benefits.split(/[,;\n]/).filter(b => b.trim()).map(b => b.trim());
+      }
+    }
+    return [benefits];
+  };
+
+  const parseDocuments = (documents) => {
+    if (!documents || documents.length === 0) {
+      return ['Aadhaar Card', 'Basic identification documents'];
+    }
+    
+    if (Array.isArray(documents)) {
+      if (documents.length > 0 && typeof documents[0] === 'object' && documents[0].document_name) {
+        return documents.map(doc => doc.document_name);
+      }
+      if (typeof documents[0] === 'string') {
+        return documents;
+      }
+    }
+    
+    if (typeof documents === 'string') {
+      try {
+        const parsed = JSON.parse(documents);
+        if (Array.isArray(parsed)) {
+          if (parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0].document_name) {
+            return parsed.map(doc => doc.document_name);
+          }
+          return parsed;
+        }
+      } catch (e) {
+        return documents.split(/[,;\n]/).filter(d => d.trim()).map(d => d.trim());
+      }
+    }
+    
+    return ['Required documents will be specified during application'];
+  };
+
+  // NEW: Filter relevant schemes based on user query
+  const filterRelevantSchemes = (userMessage) => {
+    const query = userMessage.toLowerCase();
+    const searchTerms = query.split(' ').filter(term => term.length > 3);
+    
+    return schemesData.filter(scheme => {
+      const searchableText = `${scheme.name} ${scheme.department} ${scheme.description} ${scheme.eligibility}`.toLowerCase();
+      return searchTerms.some(term => searchableText.includes(term));
+    });
+  };
+
+  // IMPROVED: Build knowledge context with size limits
+  const buildKnowledgeContext = (userMessage = '') => {
+    if (schemesData.length === 0) {
+      return "No schemes data available.";
+    }
+
+    // First, try to find relevant schemes
+    let relevantSchemes = filterRelevantSchemes(userMessage);
+    
+    // If no relevant schemes found, use all schemes but limit
+    if (relevantSchemes.length === 0) {
+      relevantSchemes = schemesData;
+    }
+
+    // Limit context to prevent API errors
+    const MAX_SCHEMES = 30;
+    const MAX_CHARS = 15000;
+    
+    let context = `You are an expert government schemes assistant with knowledge of ${schemesData.length} schemes. Here are the most relevant schemes:\n\n`;
+    let charCount = context.length;
+    let schemeCount = 0;
+    
+    for (let i = 0; i < relevantSchemes.length && schemeCount < MAX_SCHEMES; i++) {
+      const scheme = relevantSchemes[i];
+      const category = getCategoryFromDepartment(scheme.department);
+      const benefits = parseBenefits(scheme.benefits);
+      const documents = parseDocuments(scheme.required_documents);
+
+      let schemeText = `SCHEME ${schemeCount + 1}:\n`;
+      schemeText += `Name: ${scheme.name}\n`;
+      schemeText += `Category: ${category}\n`;
+      schemeText += `Department: ${scheme.department}\n`;
+      schemeText += `Type: ${scheme.scheme_type}\n`;
+      schemeText += `Description: ${scheme.description.substring(0, 300)}\n`;
+      schemeText += `Eligibility: ${scheme.eligibility.substring(0, 200)}\n`;
+      
+      if (Array.isArray(benefits) && benefits.length > 0) {
+        schemeText += `Key Benefits: ${benefits.slice(0, 3).join('; ')}\n`;
+      }
+
+      if (documents.length > 0) {
+        schemeText += `Documents: ${documents.slice(0, 4).join(', ')}\n`;
+      }
+
+      schemeText += `\n---\n\n`;
+
+      // Check if adding this scheme would exceed character limit
+      if (charCount + schemeText.length > MAX_CHARS) {
+        break;
+      }
+
+      context += schemeText;
+      charCount += schemeText.length;
+      schemeCount++;
+    }
+
+    context += `\nNote: This is a subset of ${schemesData.length} total schemes. If the user's query isn't fully answered, suggest they ask more specific questions.`;
+
+    console.log(`📊 Context built with ${schemeCount} schemes, ${charCount} characters`);
+    return context;
+  };
+
+  // IMPROVED: Send message to Gemini with better error handling
+  const sendMessageToGemini = async (userMessage, retries = 2) => {
+    try {
+      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+        console.log('Gemini API key not configured, using fallback...');
+        return fallbackResponse(userMessage);
+      }
+
+      const knowledgeContext = buildKnowledgeContext(userMessage);
+      
+      const systemPrompt = language === 'hi' 
+        ? `आप एक विशेषज्ञ सरकारी योजना सहायक हैं। नीचे दिए गए योजनाओं के डेटाबेस के आधार पर उपयोगकर्ता के प्रश्नों का उत्तर दें।
+
+निर्देश:
+- स्पष्ट, संक्षिप्त और सहायक उत्तर दें
+- यदि कई योजनाएं प्रासंगिक हैं, तो शीर्ष 3-5 को सूचीबद्ध करें
+- पात्रता, लाभ, दस्तावेज़ और आवेदन प्रक्रिया के बारे में विस्तृत जानकारी प्रदान करें
+- यदि कोई योजना नहीं मिलती है, तो विनम्रता से बताएं और सुझाव दें
+- हिंदी में उत्तर दें
+- उत्तर 250 शब्दों से कम रखें
+
+${knowledgeContext}`
+        : `You are an expert government schemes assistant. Answer user questions based on the schemes database provided below.
+
+Instructions:
+- Provide clear, concise, and helpful answers
+- If multiple schemes are relevant, list the top 3-5 with brief descriptions
+- Include specific details about eligibility, benefits, documents, and application process
+- If no matching scheme is found, politely suggest alternatives or broader categories
+- Be conversational and helpful
+- Keep responses under 250 words
+
+${knowledgeContext}`;
+
+      console.log('🚀 Making Gemini API request...');
+      console.log('📝 User message:', userMessage.substring(0, 50) + '...');
+
+      const requestBody = {
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\nUser Question: ${userMessage}\n\nAssistant Answer:`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      };
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        }
+      );
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Gemini API error response:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: { message: errorText } };
+        }
+        
+        // Handle specific error types
+        if (response.status === 400) {
+          console.error('Bad Request: Check your API request format');
+        } else if (response.status === 403) {
+          console.error('Forbidden: Check your API key permissions');
+          Alert.alert(
+            'API Error',
+            'API key permissions issue. Please verify your Gemini API key.',
+            [{ text: 'OK' }]
+          );
+        } else if (response.status === 429) {
+          console.error('Rate limit exceeded');
+          Alert.alert(
+            'Rate Limit',
+            'Too many requests. Please wait a moment.',
+            [{ text: 'OK' }]
+          );
+        }
+        
+        throw new Error(`Gemini API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Response received successfully');
+      
+      // Check for blocked content
+      if (data.candidates && data.candidates[0]?.finishReason === 'SAFETY') {
+        console.warn('Response blocked by safety filters');
+        return language === 'hi'
+          ? 'क्षमा करें, मैं इस प्रश्न का उत्तर नहीं दे सकता। कृपया कुछ और पूछें।'
+          : 'Sorry, I cannot answer this question. Please try asking something else.';
+      }
+      
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      }
+      
+      console.error('Invalid response format:', JSON.stringify(data));
+      throw new Error('Invalid response format from Gemini');
+      
+    } catch (error) {
+      console.error('❌ Gemini API error:', error.message);
+      
+      // Retry logic
+      if (retries > 0 && !error.message.includes('403') && !error.message.includes('429')) {
+        console.log(`🔄 Retrying... (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return sendMessageToGemini(userMessage, retries - 1);
+      }
+      
+      console.log('⚠️ Falling back to keyword-based search...');
+      return fallbackResponse(userMessage);
+    }
+  };
+
+  const fallbackResponse = (userMessage) => {
+    const msg = userMessage.toLowerCase();
+    
+    // Check for category-based queries
+    const categories = ['agriculture', 'health', 'business', 'education', 'women', 'housing', 'science', 'sports', 'safety'];
+    const categoryMatch = categories.find(cat => 
+      msg.includes(cat) || 
+      msg.includes(cat + ' schemes') ||
+      msg.includes('योजना')
+    );
+
+    if (categoryMatch) {
+      const categoryName = categoryMatch.charAt(0).toUpperCase() + categoryMatch.slice(1);
+      const categorySchemes = schemesData.filter(scheme => 
+        getCategoryFromDepartment(scheme.department) === categoryName
+      );
+
+      if (categorySchemes.length > 0) {
+        let response = language === 'hi'
+          ? `${categoryName} श्रेणी में ${categorySchemes.length} योजनाएं उपलब्ध हैं:\n\n`
+          : `Found ${categorySchemes.length} schemes in ${categoryName} category:\n\n`;
+        
+        categorySchemes.slice(0, 5).forEach((scheme, index) => {
+          response += `${index + 1}. **${scheme.name}**\n`;
+          response += `   ${language === 'hi' ? 'विभाग' : 'Dept'}: ${scheme.department}\n`;
+          response += `   ${language === 'hi' ? 'पात्रता' : 'Eligibility'}: ${scheme.eligibility.substring(0, 100)}...\n\n`;
+        });
+
+        if (categorySchemes.length > 5) {
+          response += language === 'hi'
+            ? `और ${categorySchemes.length - 5} योजनाएं उपलब्ध हैं।`
+            : `And ${categorySchemes.length - 5} more schemes available.`;
+        }
+
+        return response;
       }
     }
 
-    return responses.default.response;
+    // Search for specific schemes by name or keywords
+    const relevantSchemes = filterRelevantSchemes(userMessage);
+
+    if (relevantSchemes.length > 0) {
+      let response = language === 'hi' 
+        ? 'मुझे निम्नलिखित योजनाएं मिलीं जो आपके प्रश्न से मेल खाती हैं:\n\n'
+        : 'I found the following schemes matching your query:\n\n';
+      
+      relevantSchemes.slice(0, 3).forEach((scheme, index) => {
+        const category = getCategoryFromDepartment(scheme.department);
+        const benefits = parseBenefits(scheme.benefits);
+        
+        response += `${index + 1}. **${scheme.name}** (${category})\n`;
+        response += `   ${language === 'hi' ? 'विभाग' : 'Department'}: ${scheme.department}\n`;
+        response += `   ${language === 'hi' ? 'पात्रता' : 'Eligibility'}: ${scheme.eligibility.substring(0, 150)}\n`;
+        
+        if (benefits.length > 0) {
+          response += `   ${language === 'hi' ? 'मुख्य लाभ' : 'Key Benefits'}: ${benefits[0]}\n`;
+        }
+        response += '\n';
+      });
+
+      if (relevantSchemes.length > 3) {
+        response += language === 'hi'
+          ? `\nऔर ${relevantSchemes.length - 3} अन्य संबंधित योजनाएं उपलब्ध हैं।`
+          : `\nAnd ${relevantSchemes.length - 3} more related schemes available.`;
+      }
+
+      return response;
+    }
+
+    // General help response
+    if (msg.includes('help') || msg.includes('मदद') || msg.includes('how') || msg.includes('कैसे')) {
+      return language === 'hi'
+        ? `मैं आपकी निम्न तरीकों से मदद कर सकता हूं:\n\n1. श्रेणी के अनुसार योजनाएं खोजें (जैसे: "कृषि योजनाएं दिखाओ")\n2. विशिष्ट योजना की जानकारी (जैसे: "PM-KISAN के बारे में बताओ")\n3. पात्रता जांच (जैसे: "किसानों के लिए कौन सी योजनाएं हैं?")\n4. दस्तावेज़ आवश्यकताएं\n5. आवेदन प्रक्रिया\n\nकृपया अपना प्रश्न पूछें!`
+        : `I can help you with:\n\n1. Finding schemes by category (e.g., "Show me agriculture schemes")\n2. Specific scheme details (e.g., "Tell me about PM-KISAN")\n3. Eligibility checking (e.g., "What schemes are for farmers?")\n4. Document requirements\n5. Application process\n\nPlease ask your question!`;
+    }
+
+    // Default response
+    return language === 'hi'
+      ? `मुझे खेद है, मैं आपके प्रश्न के लिए कोई प्रासंगिक योजना नहीं खोज पाया।\n\nकुल ${schemesData.length} योजनाएं उपलब्ध हैं। आप पूछ सकते हैं:\n- "कृषि योजनाएं दिखाओ"\n- "स्वास्थ्य योजनाओं के बारे में बताओ"\n- "महिलाओं के लिए योजनाएं"\n\nया किसी विशिष्ट विभाग या लाभ के बारे में पूछें।`
+      : `I couldn't find schemes matching your specific query.\n\nWe have ${schemesData.length} schemes available. You can ask:\n- "Show agriculture schemes"\n- "Tell me about health schemes"\n- "Schemes for women"\n\nOr ask about a specific department or benefit.`;
   };
 
   const sendMessage = async () => {
@@ -344,9 +569,8 @@ const ChatbotScreen = ({ onBack }) => {
     setInputText('');
     setIsLoading(true);
 
-    // Simulate processing delay for realistic demo
-    setTimeout(() => {
-      const botResponse = findBestResponse(userMessage.text, language);
+    try {
+      const botResponse = await sendMessageToGemini(userMessage.text);
       
       const botMessage = {
         id: (Date.now() + 1).toString(),
@@ -357,8 +581,21 @@ const ChatbotScreen = ({ onBack }) => {
       };
 
       setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        text: language === 'hi'
+          ? 'क्षमा करें, कुछ गलत हो गया। कृपया पुनः प्रयास करें।'
+          : 'Sorry, something went wrong. Please try again.',
+        sender: 'bot',
+        timestamp: new Date(),
+        language: language
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const speakText = (text) => {
@@ -410,8 +647,8 @@ const ChatbotScreen = ({ onBack }) => {
           text: language === 'hi' ? 'हटाएं' : 'Delete',
           onPress: () => {
             const welcomeMessages = {
-              en: 'Hello! I am your government schemes assistant. How can I help you today?',
-              hi: 'नमस्ते! मैं आपका सरकारी योजना सहायक हूं। आज मैं आपकी कैसे मदद कर सकता हूं?'
+              en: 'Hello! I am your government schemes assistant powered by Google Gemini. I can help you find schemes, understand eligibility, benefits, and application processes. How can I help you today?',
+              hi: 'नमस्ते! मैं Google Gemini द्वारा संचालित आपका सरकारी योजना सहायक हूं। मैं आपको योजनाएं खोजने, पात्रता समझने, लाभ और आवेदन प्रक्रियाओं में मदद कर सकता हूं। आज मैं आपकी कैसे मदद कर सकता हूं?'
             };
 
             setMessages([{
@@ -437,6 +674,31 @@ const ChatbotScreen = ({ onBack }) => {
     });
   };
 
+  if (isInitializing) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Ionicons name="chatbubbles" size={24} color="#fff" />
+            <Text style={styles.headerTitle}>Scheme Assistant</Text>
+          </View>
+        </View>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' }]}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={[styles.loadingText, { marginTop: 16, fontSize: 16 }]}>
+            {language === 'hi' ? 'योजनाएं लोड हो रही हैं...' : 'Loading schemes database...'}
+          </Text>
+          <Text style={[styles.loadingText, { marginTop: 8, fontSize: 12, color: '#9ca3af' }]}>
+            {language === 'hi' ? 'कृपया प्रतीक्षा करें' : 'Please wait'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -452,6 +714,9 @@ const ChatbotScreen = ({ onBack }) => {
           <Text style={styles.headerTitle}>
             {language === 'hi' ? 'सरकारी योजना सहायक' : 'Scheme Assistant'}
           </Text>
+          <View style={styles.schemesCountBadge}>
+            <Text style={styles.schemesCountText}>{schemesData.length}</Text>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
@@ -607,6 +872,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+  },
+  schemesCountBadge: {
+    backgroundColor: '#fbbf24',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  schemesCountText: {
+    color: '#1e3a8a',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   headerRight: {
     flexDirection: 'row',
