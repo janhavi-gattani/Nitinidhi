@@ -8,24 +8,24 @@ import {
 } from '@expo/vector-icons';
 
 const INITIAL_PROFILE = {
-  fullName: "Harshal G. Varde",
+  fullName: "Vedika Patil",
   photoUrl: "https://picsum.photos/200/200",
-  gender: "Male",
-  dob: "1992-02-17",
-  mobile: "8948552458",
-  alternateMobile: "9876543210",
+  gender: "Female",
+  dob: "1995-08-23",
+  mobile: "9123456789",
+  alternateMobile: "8765432109",
   language: "Marathi",
-  village: "Rajgad",
-  gramPanchayat: "Rajgad Gram",
-  taluka: "Velhe",
+  village: "Khandala",
+  gramPanchayat: "Khandala Gram Panchayat",
+  taluka: "Maval",
   district: "Pune",
   state: "Maharashtra",
-  pinCode: "412212",
-  wardNumber: "04",
-  primaryOccupation: "Farmer",
-  landOwnership: true,
-  landArea: "2.5 Acres",
-  annualIncome: "1-2.5 Lakhs"
+  pinCode: "410301",
+  wardNumber: "07",
+  primaryOccupation: "Self-Employed",
+  landOwnership: false,
+  landArea: "",
+  annualIncome: "2.5-5 Lakhs"
 };
 
 const ProfileScreen = ({ onBack }) => {

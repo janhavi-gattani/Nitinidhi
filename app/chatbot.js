@@ -114,7 +114,7 @@ const ChatbotScreen = ({ onBack }) => {
       }
 
       const response = await fetch(
-        'https://cdfd8e09fcfe.ngrok-free.app/api/schemes',
+        'https://b96570f5b678.ngrok-free.app/api/schemes',
         {
           method: 'GET',
           headers: {

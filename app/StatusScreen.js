@@ -41,7 +41,7 @@ const StatusScreen = ({ onBack }) => {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch('https://cdfd8e09fcfe.ngrok-free.app/api/complaints', {
+      const response = await fetch('https://b96570f5b678.ngrok-free.app/api/complaints', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

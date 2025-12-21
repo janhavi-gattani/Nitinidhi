@@ -3,7 +3,7 @@
 // Update this file whenever your ngrok URL changes
 
 // CURRENT NGROK URL
-export const DJANGO_API_URL = 'https://cdfd8e09fcfe.ngrok-free.app';
+export const DJANGO_API_URL = 'https://b96570f5b678.ngrok-free.app';
 
 // NODE.JS BACKEND URL (if using)
 export const NODE_API_URL = 'https://nitinidhi-gbs1.onrender.com';
