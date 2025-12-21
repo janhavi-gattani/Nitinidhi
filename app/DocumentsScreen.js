@@ -739,76 +739,185 @@
 // });
 
 // export default DocumentsScreen;
-import React, { useState } from 'react';
+
+
 import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  Modal,
-  Clipboard,
-  Alert,
-} from 'react-native';
-import { 
   Ionicons,
   MaterialCommunityIcons
 } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Clipboard,
+  Modal,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-// --- Constants ---
-const VERIFIED_DOCUMENTS = [
-  { 
-    id: '1', 
-    name: 'Aadhar Card', 
-    timestamp: '2min ago', 
-    verified: true,
-    docId: 'ADHR-2024-1234-5678',
-    docHash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6'
-  },
-  { 
-    id: '2', 
-    name: 'Pan Card', 
-    timestamp: '2min ago', 
-    verified: true,
-    docId: 'PAN-2024-ABCD-1234',
-    docHash: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7'
-  },
-  { 
-    id: '4', 
-    name: 'Birth Certificate', 
-    timestamp: '1 hour ago', 
-    verified: true,
-    docId: 'BRTH-2024-9876-5432',
-    docHash: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8'
-  },
-];
+// API Configuration
+const API_BASE_URL = 'https://raylene-unexpansive-krystal.ngrok-free.dev/api';
 
-// --- Main Component ---
-function VerifiedDocuments({ onBack }) {
+// API Service Functions
+const getUserDocuments = async (aadharCardId) => {
+  try {
+    console.log(`📡 Fetching documents for Aadhar: ${aadharCardId}`);
+    
+    const response = await fetch(`${API_BASE_URL}/documents/AADHAR-005`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Successfully fetched ${data.document_count} documents`);
+    
+    // Transform the API response
+    const transformedDocs = data.documents.map((doc, index) => ({
+      id: index + 1,
+      name: formatDocumentType(doc.doc_type),
+      doc_id: doc.doc_id,
+      doc_hash: doc.doc_hash,
+      doc_type: doc.doc_type,
+      aadhar_card_id: aadharCardId,
+      created_at: doc.created_at,
+      verified: true,
+    }));
+
+    return transformedDocs;
+  } catch (error) {
+    console.error('❌ Error in getUserDocuments:', error);
+    throw error;
+  }
+};
+
+const formatDocumentType = (docType) => {
+  const typeMap = {
+    'birth_certificate': 'Birth Certificate',
+    'land_deed': 'Land Deed',
+    'identity_card': 'Identity Card',
+    'education_certificate': 'Education Certificate',
+    'marriage_certificate': 'Marriage Certificate',
+  };
+  
+  return typeMap[docType] || docType.split('_').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+};
+
+// Main Component
+function VerifiedDocuments({ onBack, aadharId = 'AADHAR-005' }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredDocs = VERIFIED_DOCUMENTS.filter(doc => 
+  // Fetch documents from API
+  const fetchDocuments = async () => {
+    try {
+      console.log('🔍 Fetching documents for Aadhar ID:', aadharId);
+      setLoading(true);
+      
+      const docs = await getUserDocuments(aadharId);
+      console.log('✅ Documents received:', docs.length);
+      
+      // Format documents for display
+      const formattedDocs = docs.map(doc => ({
+        id: doc.id,
+        name: doc.name || 'Unnamed Document',
+        timestamp: getTimeAgo(doc.created_at),
+        verified: true,
+        docId: doc.doc_id || 'N/A',
+        docHash: doc.doc_hash || 'N/A',
+        aadharCardId: doc.aadhar_card_id || aadharId,
+        docType: doc.doc_type || 'unknown',
+      }));
+      
+      console.log('✅ Total formatted documents:', formattedDocs.length);
+      setDocuments(formattedDocs);
+    } catch (error) {
+      console.error('❌ Error fetching documents:', error);
+      Alert.alert(
+        'Error Loading Documents', 
+        `Failed to load documents: ${error.message}\n\nPlease check:\n1. Flask server is running (http://localhost:5000)\n2. Database is accessible\n3. Aadhar ID exists in database`,
+        [{ text: 'OK' }]
+      );
+      // Set empty array on error
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate time ago
+  const getTimeAgo = (dateString) => {
+    if (!dateString) return 'Just now';
+    
+    try {
+      const now = new Date();
+      const past = new Date(dateString);
+      
+      if (isNaN(past.getTime())) {
+        return 'Recently';
+      }
+      
+      const diffMs = now - past;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}min ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } catch (error) {
+      return 'Recently';
+    }
+  };
+
+  // Pull to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDocuments();
+    setRefreshing(false);
+  };
+
+  // Load documents on mount
+  useEffect(() => {
+    console.log('🚀 Component mounted, Aadhar ID:', aadharId);
+    fetchDocuments();
+  }, [aadharId]);
+
+  const filteredDocs = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleBackPress = () => {
-    console.log('Back button pressed');
+    console.log('⬅️ Back button pressed');
     if (onBack) {
       onBack();
-    } else {
-      console.log('Warning: No onBack handler provided');
     }
   };
 
   const handleDocPress = (doc) => {
-    console.log('Opening document:', doc.name);
+    console.log('📂 Opening document:', doc.name);
     setSelectedDoc(doc);
     setModalVisible(true);
   };
@@ -843,7 +952,7 @@ function VerifiedDocuments({ onBack }) {
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons name="notifications-outline" size={20} color="#FFF" />
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>1</Text>
+                <Text style={styles.badgeText}>{documents.length}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -865,40 +974,72 @@ function VerifiedDocuments({ onBack }) {
         style={styles.mainScroll} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <Text style={styles.pageTitle}>Your Verified Documents</Text>
-
-        {/* Document List Card */}
-        <View style={styles.documentListCard}>
-          {filteredDocs.map((doc, index) => (
-            <View key={doc.id}>
-              <TouchableOpacity 
-                style={styles.docItem}
-                onPress={() => handleDocPress(doc)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.pdfIconContainer}>
-                  <MaterialCommunityIcons name="file-document-outline" size={32} color="#69bc7d" />
-                  <Text style={styles.pdfLabel}>PDF</Text>
-                </View>
-                <View style={styles.docTextContainer}>
-                  <Text style={styles.timestampText}>{doc.timestamp}</Text>
-                  <Text style={styles.docNameText}>{doc.name}</Text>
-                </View>
-                <View style={styles.verifiedBadge}>
-                  <MaterialCommunityIcons name="check-circle" size={24} color="#69bc7d" />
-                </View>
-              </TouchableOpacity>
-              {index < filteredDocs.length - 1 && <View style={styles.docSeparator} />}
-            </View>
-          ))}
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>Your Verified Documents</Text>
+          <TouchableOpacity 
+            onPress={fetchDocuments}
+            style={styles.refreshButton}
+          >
+            <Ionicons name="refresh" size={20} color="#1E3A8A" />
+          </TouchableOpacity>
         </View>
 
-        {filteredDocs.length === 0 && (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="file-document-outline" size={48} color="#94a3b8" />
-            <Text style={styles.emptyText}>No verified documents found</Text>
+       
+        {/* Loading State */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1E3A8A" />
+            <Text style={styles.loadingText}>Loading documents...</Text>
           </View>
+        ) : (
+          <>
+            {/* Document List Card */}
+            {filteredDocs.length > 0 && (
+              <View style={styles.documentListCard}>
+                {filteredDocs.map((doc, index) => (
+                  <View key={doc.id}>
+                    <TouchableOpacity 
+                      style={styles.docItem}
+                      onPress={() => handleDocPress(doc)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.pdfIconContainer}>
+                        <MaterialCommunityIcons name="file-document-outline" size={32} color="#69bc7d" />
+                        <Text style={styles.pdfLabel}>PDF</Text>
+                      </View>
+                      <View style={styles.docTextContainer}>
+                        <Text style={styles.timestampText}>{doc.timestamp}</Text>
+                        <Text style={styles.docNameText}>{doc.name}</Text>
+                      </View>
+                      <View style={styles.verifiedBadge}>
+                        <MaterialCommunityIcons name="check-circle" size={24} color="#69bc7d" />
+                      </View>
+                    </TouchableOpacity>
+                    {index < filteredDocs.length - 1 && <View style={styles.docSeparator} />}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Empty State */}
+            {filteredDocs.length === 0 && !loading && (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons name="file-document-outline" size={48} color="#94a3b8" />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'No documents found' : `No documents found for ${aadharId}`}
+                </Text>
+                {!searchQuery && (
+                  <Text style={styles.emptySubtext}>
+                    Documents issued will appear here
+                  </Text>
+                )}
+              </View>
+            )}
+          </>
         )}
 
         <View style={{ height: 100 }} />
@@ -935,6 +1076,20 @@ function VerifiedDocuments({ onBack }) {
                     </View>
                   </View>
 
+                  {/* Aadhar Card ID */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Aadhar Card ID</Text>
+                    <View style={styles.copyableField}>
+                      <Text style={styles.detailValue}>{selectedDoc.aadharCardId}</Text>
+                      <TouchableOpacity 
+                        style={styles.copyButton}
+                        onPress={() => copyToClipboard(selectedDoc.aadharCardId, 'Aadhar Card ID')}
+                      >
+                        <MaterialCommunityIcons name="content-copy" size={20} color="#1E3A8A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
                   {/* Document ID */}
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Document ID</Text>
@@ -951,7 +1106,7 @@ function VerifiedDocuments({ onBack }) {
 
                   {/* Document Hash */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Document Hash</Text>
+                    <Text style={styles.detailLabel}>Document Hash (SHA-256)</Text>
                     <View style={styles.copyableField}>
                       <Text style={styles.detailValueHash}>{selectedDoc.docHash}</Text>
                       <TouchableOpacity 
@@ -963,29 +1118,30 @@ function VerifiedDocuments({ onBack }) {
                     </View>
                   </View>
 
-                  {/* QR Code */}
+                  {/* QR Code - Generated from Hash */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>QR Code</Text>
+                    <Text style={styles.detailLabel}>Verification QR Code</Text>
                     <View style={styles.qrContainer}>
                       <QRCode
-                        value={JSON.stringify({
-                          name: selectedDoc.name,
-                          docId: selectedDoc.docId,
-                          hash: selectedDoc.docHash,
-                          verified: true
-                        })}
+                        value={selectedDoc.docHash}
                         size={200}
                         backgroundColor="white"
                         color="#1E3A8A"
                       />
-                      <Text style={styles.qrHelper}>Scan to verify document</Text>
+                      <Text style={styles.qrHelper}>Scan to verify document hash</Text>
+                      <Text style={styles.qrSubHelper}>Hash: {selectedDoc.docHash.substring(0, 16)}...</Text>
                     </View>
                   </View>
 
                   {/* Additional Info */}
                   <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Timestamp</Text>
+                    <Text style={styles.detailLabel}>Issued</Text>
                     <Text style={styles.detailValue}>{selectedDoc.timestamp}</Text>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Document Type</Text>
+                    <Text style={styles.detailValue}>{selectedDoc.docType}</Text>
                   </View>
                 </>
               )}
@@ -1064,15 +1220,16 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: '#EF4444',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   searchBar: { 
@@ -1101,11 +1258,42 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   pageTitle: { 
     fontSize: 20, 
     fontWeight: 'bold', 
-    color: '#1E3A8A', 
-    marginBottom: 15 
+    color: '#1E3A8A',
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  debugInfo: {
+    backgroundColor: '#eff6ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1E3A8A',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#1e40af',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#64748b',
   },
   documentListCard: {
     backgroundColor: '#fff',
@@ -1168,6 +1356,11 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginTop: 12,
   },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#94a3b8',
+    marginTop: 8,
+  },
   fab: { 
     position: 'absolute', 
     bottom: 20, 
@@ -1192,7 +1385,6 @@ const styles = StyleSheet.create({
     color: '#1E3A8A', 
     marginBottom: -2 
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1271,10 +1463,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailValueHash: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#1e293b',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     flex: 1,
+    lineHeight: 16,
   },
   copyableField: {
     flexDirection: 'row',
@@ -1301,7 +1494,13 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 14,
     color: '#64748b',
-    fontStyle: 'italic',
+    fontWeight: '600',
+  },
+  qrSubHelper: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#94a3b8',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   closeButton: {
     backgroundColor: '#1E3A8A',
