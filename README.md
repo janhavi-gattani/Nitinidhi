@@ -1,4 +1,4 @@
-﻿# 🇮🇳 Niti Nidhi
+# 🇮🇳 Niti Nidhi
 
 **Niti Nidhi** is a digital governance mobile app that helps citizens discover government schemes, apply for services, track applications, raise complaints, read local news, explore job opportunities, and chat with an AI assistant — all in one place.
 
@@ -151,20 +151,39 @@ You should see: `✅ Server running on port 5000`
 
 ### 6️⃣ Run the Frontend (Expo App)
 
-In your **original terminal** (at the project root):
+In your **original terminal** (at the **project root**, not inside `backend/`):
 
 ```bash
-npm start
+npx expo start
 ```
 
-This opens **Expo Dev Tools** in your browser. Then choose how to run the app:
+This starts the Expo dev server and shows a QR code in the terminal. Then choose how to run the app:
 
-| Platform | What to do |
+| Platform | Command / Action |
 |---|---|
-| 📱 Physical phone | Scan the QR code with the [Expo Go](https://expo.dev/go) app |
-| 🤖 Android emulator | Press `a` in the terminal |
-| 🍎 iOS simulator (Mac only) | Press `i` in the terminal |
-| 🌐 Web browser | Press `w` in the terminal |
+| 📱 Physical phone (Android/iOS) | Scan the QR code with the [Expo Go](https://expo.dev/go) app |
+| 🤖 Android emulator | Press `a` in terminal **or** run `npx expo start --android` |
+| 🍎 iOS simulator (Mac only) | Press `i` in terminal **or** run `npx expo start --ios` |
+| 🌐 Web browser | Press `w` in terminal **or** run `npx expo start --web` |
+
+> 💡 You can also use `npm start` — it runs `expo start` under the hood via the `scripts` in `package.json`.
+
+**If you get a "dev client" error** and the app doesn't open in Expo Go, try:
+```bash
+npx expo start --go
+```
+
+**To run directly on a connected Android device:**
+```bash
+npx expo run:android
+```
+
+**To run on iOS simulator (Mac only):**
+```bash
+npx expo run:ios
+```
+
+> ⚠️ `npx expo run:android` / `run:ios` require a full native build (Android Studio / Xcode). For quick testing, use **Expo Go** with `npx expo start`.
 
 ---
 
