@@ -753,7 +753,6 @@ import {
   Modal,
   Platform,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -762,40 +761,42 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
+import { authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 // API Configuration
-const API_BASE_URL = 'https://raylene-unexpansive-krystal.ngrok-free.dev/api';
+const API_BASE_URL = `${DJANGO_API_URL}/api`;
 
 // API Service Functions
 const getUserDocuments = async (aadharCardId) => {
   try {
-    console.log(`📡 Fetching documents for Aadhar: ${aadharCardId}`);
+    const targetAadhar = aadharCardId || 'AADHAR-005';
+    console.log(`📡 Fetching documents for Aadhar: ${targetAadhar}`);
     
-    const response = await fetch(`${API_BASE_URL}/documents/AADHAR-005`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/documents/${targetAadhar}/`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.detail || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log(`✅ Successfully fetched ${data.document_count} documents`);
+    const rawDocs = Array.isArray(data.documents) ? data.documents : [];
+    console.log(`✅ Successfully fetched ${data.document_count || rawDocs.length} documents`);
     
     // Transform the API response
-    const transformedDocs = data.documents.map((doc, index) => ({
+    const transformedDocs = rawDocs.map((doc, index) => ({
       id: index + 1,
       name: formatDocumentType(doc.doc_type),
-      doc_id: doc.doc_id,
-      doc_hash: doc.doc_hash,
-      doc_type: doc.doc_type,
-      aadhar_card_id: aadharCardId,
-      created_at: doc.created_at,
+      doc_id: doc.doc_id || `DOC-${index + 1}`,
+      doc_hash: doc.doc_hash || 'N/A',
+      doc_type: doc.doc_type || 'general',
+      aadhar_card_id: doc.aadhar_card_id || targetAadhar,
+      created_at: doc.created_at || new Date().toISOString(),
       verified: true,
     }));
 

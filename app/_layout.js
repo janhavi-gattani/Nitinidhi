@@ -72,16 +72,23 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="schemes" />
-      <Stack.Screen name="documents" />
-      <Stack.Screen name="employment" />
+      <Stack.Screen name="SchemesScreen" />
+      <Stack.Screen name="DocumentsScreen" />
       <Stack.Screen name="chatbot" />
-      <Stack.Screen name="complaints" />
-      <Stack.Screen name="news" />
-      <Stack.Screen name="helpline" />
-      <Stack.Screen name="check-status" />
-      <Stack.Screen name="explore-schemes" />
-      <Stack.Screen name="menu" />
+      <Stack.Screen name="ComplaintFormScreen" />
+      <Stack.Screen name="ComplaintDetailsScreen" />
+      <Stack.Screen name="NewsScreen" />
+      <Stack.Screen name="NewsDetailsScreen" />
+      <Stack.Screen name="HelplineScreen" />
+      <Stack.Screen name="StatusScreen" />
+      <Stack.Screen name="ExploreSchemesScreen" />
+      <Stack.Screen name="ExploreSchemes" />
+      <Stack.Screen name="SchemeDetailsScreen" />
+      <Stack.Screen name="EligibleSchemesScreen" />
+      <Stack.Screen name="ApplicationFormScreen" />
+      <Stack.Screen name="JobDetailsScreen" />
+      <Stack.Screen name="JobUpdateScreen" />
+      <Stack.Screen name="ProfileScreen" />
     </Stack>
   );
 }

@@ -7,10 +7,8 @@ import {
   StatusBar,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-// Import screens
-import { AuthChoiceScreen, SignInScreen, SignUpScreen } from './AuthScreens';
-import { DashboardScreen } from './(tabs)/index';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // --- ONBOARDING DATA ---
 const onboardingData = [
@@ -69,100 +67,29 @@ const Illustration = ({ item }) => {
 
 // --- ROOT APP ---
 export default function App() {
-  // Debug: log imported screens to ensure they are defined
-  console.log('App imports check', {
-    AuthChoiceScreen: typeof AuthChoiceScreen,
-    SignInScreen: typeof SignInScreen,
-    SignUpScreen: typeof SignUpScreen,
-    DashboardScreen: typeof DashboardScreen,
-  });
-  const [screen, setScreen] = useState('splash');
+  const router = useRouter();
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    if (screen === 'splash') {
-      const timer = setTimeout(() => {
-        setScreen('onboarding');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [screen]);
-
-  useEffect(() => {
-    if (screen === 'onboarding' && step === 0) {
-      const timer = setTimeout(() => {
-        setStep(1);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [screen]);
 
   const handleNext = () => {
     if (step < onboardingData.length - 1) {
       setStep(step + 1);
     } else {
-      setScreen('authChoice');
+      handleFinish();
     }
   };
 
   const handleSkip = () => {
-    setScreen('authChoice');
+    handleFinish();
   };
 
-  // SPLASH SCREEN
-  if (screen === 'splash') {
-    return (
-      <View style={styles.splashContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#879BF0" />
-        <View style={styles.splashLogoBox}>
-          <MaterialCommunityIcons name="bank" size={40} color="#1E3A8A" />
-          <View style={{ width: 10 }} />
-          <View>
-            <Text style={styles.splashLogoText}>Niti Nidhi</Text>
-          </View>
-        </View>
-        <Text style={styles.splashDescription}>
-          Niti Nidhi brings government services closer to you.
-          Access schemes, jobs, complaints, and support easily in one place.
-        </Text>
-      </View>
-    );
-  }
-
-  // AUTH CHOICE SCREEN
-  if (screen === 'authChoice') {
-    return (
-      <AuthChoiceScreen 
-        onSignIn={() => setScreen('signIn')} 
-        onCreateAccount={() => setScreen('signUp')} 
-      />
-    );
-  }
-
-  // SIGN IN SCREEN - After clicking "Sign in" button, goes to 'main' (Dashboard)
-  if (screen === 'signIn') {
-    return (
-      <SignInScreen 
-        onBack={() => setScreen('authChoice')} 
-        onSubmit={() => setScreen('main')} 
-      />
-    );
-  }
-
-  // SIGN UP SCREEN
-  if (screen === 'signUp') {
-    return (
-      <SignUpScreen 
-        onBack={() => setScreen('authChoice')} 
-        onSubmit={() => setScreen('main')} 
-      />
-    );
-  }
-
-  // DASHBOARD SCREEN (Main App)
-  if (screen === 'main') {
-    return <DashboardScreen onLogout={() => setScreen('splash')} />;
-  }
+  const handleFinish = async () => {
+    try {
+      await AsyncStorage.setItem('@onboarding_complete', 'true');
+    } catch (e) {
+      console.error('Failed to save onboarding status', e);
+    }
+    router.replace('/(tabs)');
+  };
 
   // ONBOARDING SCREENS
   const currentItem = onboardingData[step];

@@ -195,6 +195,10 @@
 //   },
 //   activeNavText: {
 //     color: '#2563EB',
-//     fontWeight: '600',
+//     fontWeight: '#600',
 //   },
 // });
+
+export default function BottomNav() {
+  return null;
+}

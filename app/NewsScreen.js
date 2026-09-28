@@ -6,19 +6,21 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   Platform,
   ActivityIndicator,
   Alert,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Ionicons,
   MaterialCommunityIcons
 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NewsDetailsScreen from './NewsDetailsScreen';
+import { authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 function NewsScreen({ onBack }) {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -36,19 +38,8 @@ function NewsScreen({ onBack }) {
     try {
       setLoading(true);
       
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
-      const response = await fetch('https://b96570f5b678.ngrok-free.app/api/news', {
+      const response = await authenticatedFetch(`${DJANGO_API_URL}/api/news`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
       });
 
       console.log('News response status:', response.status);

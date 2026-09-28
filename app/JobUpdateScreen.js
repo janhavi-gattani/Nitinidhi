@@ -6,18 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   StatusBar,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Ionicons,
   MaterialCommunityIcons
 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import JobDetailsScreen from './JobDetailsScreen';
+import { authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 // --- Constants ---
 const SchemeCategory = {
@@ -43,19 +45,8 @@ function JobUpdateScreen({ onBack }) {
     try {
       setLoading(true);
       
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
-      const response = await fetch('https://b96570f5b678.ngrok-free.app/api/job-vacancies', {
+      const response = await authenticatedFetch(`${DJANGO_API_URL}/api/job-vacancies`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
       });
 
       console.log('Jobs response status:', response.status);

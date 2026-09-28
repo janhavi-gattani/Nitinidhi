@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, 
-  SafeAreaView, Platform, Switch, Animated, Modal,
+  Platform, Switch, Animated, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import EligibleSchemesScreen from './EligibleSchemesScreen';

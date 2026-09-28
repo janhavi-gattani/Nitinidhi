@@ -75,14 +75,22 @@ export const authenticatedFetch = async (url, options = {}) => {
     let token = await AsyncStorage.getItem('@access_token');
     
     if (!token) {
-      throw new Error('No authentication token found. Please login again.');
+      console.log('No access token found, attempting refresh with refresh token...');
+      token = await refreshAccessToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
     }
 
-    // Prepare headers
+    // Prepare headers (strip any caller-provided Authorization to avoid stale token override)
+    const customHeaders = { ...(options.headers || {}) };
+    delete customHeaders['Authorization'];
+    delete customHeaders['authorization'];
+
     const headers = {
       ...COMMON_HEADERS,
+      ...customHeaders,
       'Authorization': `Bearer ${token}`,
-      ...options.headers,
     };
 
     console.log(`Making authenticated request to: ${url}`);
@@ -108,7 +116,7 @@ export const authenticatedFetch = async (url, options = {}) => {
       console.log('Retrying request with new token...');
 
       // Retry the request with new token
-      headers.Authorization = `Bearer ${newToken}`;
+      headers['Authorization'] = `Bearer ${newToken}`;
       response = await fetch(url, {
         ...options,
         headers,
@@ -216,13 +224,76 @@ export const isTokenValid = async () => {
 };
 
 /**
- * Clear all stored tokens
+ * Safely parse payload from JWT token
+ * @param {string} token 
+ * @returns {object|null}
+ */
+export const parseJwt = (token) => {
+  try {
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let str = '';
+    for (let i = 0; i < base64.length; i += 4) {
+      const a = chars.indexOf(base64.charAt(i));
+      const b = chars.indexOf(base64.charAt(i + 1));
+      const c = chars.indexOf(base64.charAt(i + 2));
+      const d = chars.indexOf(base64.charAt(i + 3));
+      const bitmap = (a << 18) | (b << 12) | ((c & 63) << 6) | (d & 63);
+      if (c === 64) {
+        str += String.fromCharCode((bitmap >> 16) & 255);
+      } else if (d === 64) {
+        str += String.fromCharCode((bitmap >> 16) & 255, (bitmap >> 8) & 255);
+      } else {
+        str += String.fromCharCode((bitmap >> 16) & 255, (bitmap >> 8) & 255, bitmap & 255);
+      }
+    }
+    return JSON.parse(decodeURIComponent(escape(str)));
+  } catch (e) {
+    console.error('Error parsing JWT:', e);
+    return null;
+  }
+};
+
+/**
+ * Get current logged in user ID dynamically from storage or token
+ * @returns {Promise<string|null>}
+ */
+export const getCurrentUserId = async () => {
+  try {
+    let userId = await AsyncStorage.getItem('@user_id');
+    if (userId) return userId;
+    
+    const token = await AsyncStorage.getItem('@access_token');
+    if (token) {
+      const payload = parseJwt(token);
+      userId = payload?.user_id || payload?.sub || payload?.id;
+      if (userId) {
+        await AsyncStorage.setItem('@user_id', String(userId));
+        return String(userId);
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting current user ID:', error);
+    return null;
+  }
+};
+
+/**
+ * Clear all stored tokens and session data
  */
 export const clearTokens = async () => {
   try {
     await AsyncStorage.removeItem('@access_token');
     await AsyncStorage.removeItem('@refresh_token');
-    console.log('Tokens cleared');
+    await AsyncStorage.removeItem('@user_id');
+    console.log('Tokens and user session cleared');
   } catch (error) {
     console.error('Error clearing tokens:', error);
   }
@@ -262,7 +333,7 @@ export const isLoggedIn = async () => {
  * Login helper function
  * @param {string} username 
  * @param {string} password 
- * @returns {Promise<{success: boolean, access?: string, refresh?: string, error?: string}>}
+ * @returns {Promise<{success: boolean, access?: string, refresh?: string, userId?: string, error?: string}>}
  */
 export const login = async (username, password) => {
   try {
@@ -278,16 +349,24 @@ export const login = async (username, password) => {
     });
 
     console.log('Login response status:', response.status);
+    console.log('Login response content-type:', response.headers.get('content-type'));
 
     const rawText = await response.text();
-    console.log('Login raw response:', rawText);
+    console.log('Login raw response:', rawText.substring(0, 500)); // Truncate to avoid log spam
 
     let data;
     try {
       data = JSON.parse(rawText);
     } catch (parseError) {
-      console.error('Failed to parse login response:', parseError);
-      return { success: false, error: 'Invalid response from server' };
+      console.error('Failed to parse login response (non-JSON body):', parseError.message);
+      console.error('Raw response was:', rawText.substring(0, 300));
+      // Likely causes: ngrok interstitial page, Django HTML error page, or wrong URL
+      const statusHint = response.status === 404
+        ? 'Endpoint not found (404) — check DJANGO_LOGIN URL in Config.js'
+        : response.status >= 500
+        ? `Server error (${response.status}) — check Django logs`
+        : `Unexpected response (HTTP ${response.status})`;
+      return { success: false, error: `Invalid response from server. ${statusHint}` };
     }
 
     if (!response.ok) {
@@ -297,10 +376,17 @@ export const login = async (username, password) => {
       };
     }
 
-    // Store tokens
+    // Store tokens and extract user_id
     if (data.access && data.refresh) {
       await AsyncStorage.setItem('@access_token', data.access);
       await AsyncStorage.setItem('@refresh_token', data.refresh);
+      
+      const payload = parseJwt(data.access);
+      const userId = payload?.user_id || payload?.sub || payload?.id;
+      if (userId) {
+        await AsyncStorage.setItem('@user_id', String(userId));
+        console.log('User ID stored:', userId);
+      }
       
       console.log('Login successful, tokens stored');
       
@@ -308,6 +394,7 @@ export const login = async (username, password) => {
         success: true,
         access: data.access,
         refresh: data.refresh,
+        userId: userId ? String(userId) : null,
       };
     }
 
@@ -317,3 +404,7 @@ export const login = async (username, password) => {
     return { success: false, error: error.message };
   }
 };
+
+export default function TokenUtils() {
+  return null;
+}

@@ -1266,7 +1266,6 @@ import {
   Text,
   ScrollView,
   TextInput,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Platform,
@@ -1277,11 +1276,14 @@ import {
   Animated,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import SchemeDetailsScreen from './SchemeDetailsScreen';
+import { DJANGO_API_URL } from './Config';
+import { authenticatedFetch } from './Tokenutils';
 
 const CATEGORIES = [
   { id: '1', name: 'Agriculture', icon: 'leaf' },
@@ -1917,22 +1919,14 @@ const ExploreSchemes = ({ onBack }) => {
 
   const fetchAllCategoryCounts = async () => {
     try {
-      const token = await AsyncStorage.getItem('@access_token');
-      if (!token) return;
-
       const counts = {};
       
       for (const category of CATEGORIES) {
         try {
-          const response = await fetch(
-            `https://b96570f5b678.ngrok-free.app/api/schemes?department=${category.name}`,
+          const response = await authenticatedFetch(
+            `${DJANGO_API_URL}/api/schemes?department=${category.name}`,
             {
               method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                'ngrok-skip-browser-warning': 'true'
-              }
             }
           );
 
@@ -1965,21 +1959,10 @@ const ExploreSchemes = ({ onBack }) => {
     try {
       setLoading(true);
       
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
-      const response = await fetch(
-        `https://b96570f5b678.ngrok-free.app/api/schemes?department=${categoryName}`,
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/schemes?department=${categoryName}`,
         {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          }
         }
       );
 

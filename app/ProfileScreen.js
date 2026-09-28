@@ -1,23 +1,32 @@
-import React, { useState } from 'react';
-import { 
-  View, Text, ScrollView, TouchableOpacity, Image, 
-  TextInput, StyleSheet, StatusBar, Switch
-} from 'react-native';
-import { 
-  Ionicons, MaterialCommunityIcons, FontAwesome5 
+import {
+  Ionicons, MaterialCommunityIcons
 } from '@expo/vector-icons';
+import { useState } from 'react';
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { clearTokens } from './Tokenutils';
 
 const INITIAL_PROFILE = {
-  fullName: "Vedika Patil",
+  fullName: "Janhavi Gattani",
   photoUrl: "https://picsum.photos/200/200",
   gender: "Female",
   dob: "1995-08-23",
   mobile: "9123456789",
   alternateMobile: "8765432109",
   language: "Marathi",
-  village: "Khandala",
-  gramPanchayat: "Khandala Gram Panchayat",
-  taluka: "Maval",
+  village: "Bibs",
+  gramPanchayat: "Pune Gram Panchayat",
+  taluka: "Pune",
   district: "Pune",
   state: "Maharashtra",
   pinCode: "410301",
@@ -28,9 +37,28 @@ const INITIAL_PROFILE = {
   annualIncome: "2.5-5 Lakhs"
 };
 
-const ProfileScreen = ({ onBack }) => {
+const ProfileScreen = ({ onBack, onLogout }) => {
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [view, setView] = useState('profile');
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await clearTokens();
+            if (onLogout) onLogout();
+            else if (onBack) onBack();
+          },
+        },
+      ]
+    );
+  };
 
   const updateProfile = (updates) => {
     setProfile(prev => ({ ...prev, ...updates }));
@@ -53,9 +81,9 @@ const ProfileScreen = ({ onBack }) => {
           </TouchableOpacity>
         )}
         <Text style={styles.headerTitle}>
-          {view === 'profile' ? 'My Profile' : 
-           view === 'edit-personal' ? 'Personal Details' :
-           view === 'edit-address' ? 'Address Details' : 'Economic Details'}
+          {view === 'profile' ? 'My Profile' :
+            view === 'edit-personal' ? 'Personal Details' :
+              view === 'edit-address' ? 'Address Details' : 'Economic Details'}
         </Text>
       </View>
       <TouchableOpacity>
@@ -69,20 +97,20 @@ const ProfileScreen = ({ onBack }) => {
       {/* VCard Section */}
       <View style={styles.vcard}>
         <View style={styles.vcardPattern}>
-          <MaterialCommunityIcons name="shield-check" size={200} color="#60a5fa" style={{opacity: 0.1}} />
+          <MaterialCommunityIcons name="shield-check" size={200} color="#60a5fa" style={{ opacity: 0.1 }} />
         </View>
-        
+
         <View style={styles.vcardContent}>
           <View style={styles.profileImageContainer}>
-            <Image 
-              source={{ uri: profile.photoUrl || 'https://picsum.photos/200/200' }} 
+            <Image
+              source={{ uri: profile.photoUrl || 'https://picsum.photos/200/200' }}
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.cameraButton}>
               <Ionicons name="camera" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.vcardInfo}>
             <Text style={styles.vcardTitle}>HG VCard</Text>
             <Text style={styles.vcardNumber}>
@@ -102,8 +130,8 @@ const ProfileScreen = ({ onBack }) => {
       </View>
 
       {/* Profile Sections */}
-      <ProfileSection 
-        title="Personal Details" 
+      <ProfileSection
+        title="Personal Details"
         icon={<Ionicons name="person" size={18} color="#3b82f6" />}
         onEdit={() => navigateTo('edit-personal')}
         items={[
@@ -115,8 +143,8 @@ const ProfileScreen = ({ onBack }) => {
         ]}
       />
 
-      <ProfileSection 
-        title="Address & Governance" 
+      <ProfileSection
+        title="Address & Governance"
         icon={<Ionicons name="location" size={18} color="#10b981" />}
         onEdit={() => navigateTo('edit-address')}
         items={[
@@ -127,8 +155,8 @@ const ProfileScreen = ({ onBack }) => {
         ]}
       />
 
-      <ProfileSection 
-        title="Economic Details" 
+      <ProfileSection
+        title="Economic Details"
         icon={<Ionicons name="briefcase" size={18} color="#f59e0b" />}
         onEdit={() => navigateTo('edit-economic')}
         items={[
@@ -137,21 +165,27 @@ const ProfileScreen = ({ onBack }) => {
           { label: 'Annual Income', value: profile.annualIncome },
         ]}
       />
-      <View style={{height: 20}} />
+      {/* Logout Button */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
   const renderPersonalEdit = () => (
     <ScrollView style={styles.scrollView}>
       <FormField label="Full Name" value={profile.fullName} onChange={(val) => updateProfile({ fullName: val })} />
-      
+
       <View style={styles.row}>
         <View style={styles.halfWidth}>
-          <SelectField 
-            label="Gender" 
-            value={profile.gender} 
-            options={['Male', 'Female', 'Other']} 
-            onChange={(val) => updateProfile({ gender: val })} 
+          <SelectField
+            label="Gender"
+            value={profile.gender}
+            options={['Male', 'Female', 'Other']}
+            onChange={(val) => updateProfile({ gender: val })}
           />
         </View>
         <View style={styles.halfWidth}>
@@ -161,22 +195,22 @@ const ProfileScreen = ({ onBack }) => {
 
       <FormField label="Mobile Number" value={profile.mobile} onChange={(val) => updateProfile({ mobile: val })} />
       <FormField label="Alternate Mobile" value={profile.alternateMobile} onChange={(val) => updateProfile({ alternateMobile: val })} />
-      
-      <SelectField 
-        label="Language Preference" 
-        value={profile.language} 
-        options={['Marathi', 'Hindi', 'English', 'Local']} 
-        onChange={(val) => updateProfile({ language: val })} 
+
+      <SelectField
+        label="Language Preference"
+        value={profile.language}
+        options={['Marathi', 'Hindi', 'English', 'Local']}
+        onChange={(val) => updateProfile({ language: val })}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => navigateTo('edit-address')}
         style={styles.nextButton}
       >
         <Text style={styles.nextButtonText}>Next Step</Text>
         <Ionicons name="chevron-forward" size={20} color="#fff" />
       </TouchableOpacity>
-      <View style={{height: 20}} />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
@@ -184,7 +218,7 @@ const ProfileScreen = ({ onBack }) => {
     <ScrollView style={styles.scrollView}>
       <FormField label="Village Name" value={profile.village} onChange={(val) => updateProfile({ village: val })} />
       <FormField label="Gram Panchayat" value={profile.gramPanchayat} onChange={(val) => updateProfile({ gramPanchayat: val })} />
-      
+
       <View style={styles.row}>
         <View style={styles.halfWidth}>
           <FormField label="Taluka / Block" value={profile.taluka} onChange={(val) => updateProfile({ taluka: val })} />
@@ -206,13 +240,13 @@ const ProfileScreen = ({ onBack }) => {
       <FormField label="Ward / Booth Number" value={profile.wardNumber} onChange={(val) => updateProfile({ wardNumber: val })} />
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigateTo('edit-personal')}
           style={styles.backButton}
         >
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigateTo('edit-economic')}
           style={styles.nextButtonSmall}
         >
@@ -220,22 +254,22 @@ const ProfileScreen = ({ onBack }) => {
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-      <View style={{height: 20}} />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
   const renderEconomicEdit = () => (
     <ScrollView style={styles.scrollView}>
-      <SelectField 
-        label="Primary Occupation" 
-        value={profile.primaryOccupation} 
-        options={['Farmer', 'Laborer', 'Self-Employed', 'Student', 'Homemaker', 'Unemployed']} 
-        onChange={(val) => updateProfile({ primaryOccupation: val })} 
+      <SelectField
+        label="Primary Occupation"
+        value={profile.primaryOccupation}
+        options={['Farmer', 'Laborer', 'Self-Employed', 'Student', 'Homemaker', 'Unemployed']}
+        onChange={(val) => updateProfile({ primaryOccupation: val })}
       />
 
       <View style={styles.switchContainer}>
         <Text style={styles.switchLabel}>Land Ownership</Text>
-        <Switch 
+        <Switch
           value={profile.landOwnership}
           onValueChange={(val) => updateProfile({ landOwnership: val })}
           trackColor={{ false: '#d1d5db', true: '#3b82f6' }}
@@ -244,36 +278,36 @@ const ProfileScreen = ({ onBack }) => {
       </View>
 
       {profile.landOwnership && (
-        <FormField 
-          label="Land Area (Acres/Bigha)" 
-          value={profile.landArea} 
+        <FormField
+          label="Land Area (Acres/Bigha)"
+          value={profile.landArea}
           placeholder="e.g. 2.5 Acres"
-          onChange={(val) => updateProfile({ landArea: val })} 
+          onChange={(val) => updateProfile({ landArea: val })}
         />
       )}
 
-      <SelectField 
-        label="Annual Income Range" 
-        value={profile.annualIncome} 
-        options={['Below 1 Lakh', '1-2.5 Lakhs', '2.5-5 Lakhs', 'Above 5 Lakhs']} 
-        onChange={(val) => updateProfile({ annualIncome: val })} 
+      <SelectField
+        label="Annual Income Range"
+        value={profile.annualIncome}
+        options={['Below 1 Lakh', '1-2.5 Lakhs', '2.5-5 Lakhs', 'Above 5 Lakhs']}
+        onChange={(val) => updateProfile({ annualIncome: val })}
       />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => navigateTo('profile')}
         style={styles.saveButton}
       >
         <Text style={styles.nextButtonText}>Save Profile</Text>
         <Ionicons name="checkmark-circle" size={20} color="#fff" />
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         onPress={() => navigateTo('edit-address')}
         style={styles.textButton}
       >
         <Text style={styles.textButtonText}>Back to Address</Text>
       </TouchableOpacity>
-      <View style={{height: 20}} />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
@@ -281,7 +315,7 @@ const ProfileScreen = ({ onBack }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#60a5fa" />
       {renderHeader()}
-      
+
       {view === 'profile' && renderProfileView()}
       {view === 'edit-personal' && renderPersonalEdit()}
       {view === 'edit-address' && renderAddressEdit()}
@@ -294,15 +328,15 @@ const ProfileScreen = ({ onBack }) => {
             Step {view === 'edit-personal' ? '1' : view === 'edit-address' ? '2' : '3'} of 3
           </Text>
           <View style={styles.progressDots}>
-            {[1,2,3].map(i => (
-              <View 
-                key={i} 
+            {[1, 2, 3].map(i => (
+              <View
+                key={i}
                 style={[
                   styles.progressDot,
-                  ((view === 'edit-personal' && i === 1) || 
-                   (view === 'edit-address' && i <= 2) || 
-                   (view === 'edit-economic' && i <= 3)) && styles.progressDotActive
-                ]} 
+                  ((view === 'edit-personal' && i === 1) ||
+                    (view === 'edit-address' && i <= 2) ||
+                    (view === 'edit-economic' && i <= 3)) && styles.progressDotActive
+                ]}
               />
             ))}
           </View>
@@ -326,7 +360,7 @@ const ProfileSection = ({ title, icon, onEdit, items }) => (
     </View>
     <View style={styles.sectionContent}>
       {items.map((item, idx) => (
-        <View key={idx} style={[styles.sectionRow, idx === items.length - 1 && {borderBottomWidth: 0}]}>
+        <View key={idx} style={[styles.sectionRow, idx === items.length - 1 && { borderBottomWidth: 0 }]}>
           <Text style={styles.sectionLabel}>{item.label}</Text>
           <Text style={styles.sectionValue}>{item.value || '-'}</Text>
         </View>
@@ -338,7 +372,7 @@ const ProfileSection = ({ title, icon, onEdit, items }) => (
 const FormField = ({ label, value, placeholder, onChange }) => (
   <View style={styles.formField}>
     <Text style={styles.fieldLabel}>{label}</Text>
-    <TextInput 
+    <TextInput
       value={value}
       placeholder={placeholder}
       onChangeText={onChange}
@@ -659,6 +693,24 @@ const styles = StyleSheet.create({
   },
   progressDotActive: {
     backgroundColor: '#3b82f6',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
+    backgroundColor: '#fff5f5',
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ef4444',
   },
 });
 

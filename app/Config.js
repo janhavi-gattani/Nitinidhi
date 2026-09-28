@@ -3,7 +3,7 @@
 // Update this file whenever your ngrok URL changes
 
 // CURRENT NGROK URL
-export const DJANGO_API_URL = 'https://b96570f5b678.ngrok-free.app';
+export const DJANGO_API_URL = 'https://raylene-unexpansive-krystal.ngrok-free.dev';
 
 // NODE.JS BACKEND URL (if using)
 export const NODE_API_URL = 'https://nitinidhi-gbs1.onrender.com';
@@ -17,8 +17,8 @@ export const API_ENDPOINTS = {
   
   // Direct Django endpoints (when not using Node.js proxy)
   DJANGO_LOGIN: `${DJANGO_API_URL}/api/auth/token/`,
-  DJANGO_REFRESH: `${DJANGO_API_URL}/api/token/refresh/`,
-  DJANGO_VERIFY: `${DJANGO_API_URL}/api/token/verify/`,
+  DJANGO_REFRESH: `${DJANGO_API_URL}/api/auth/token/refresh/`,
+  DJANGO_VERIFY: `${DJANGO_API_URL}/api/auth/token/verify/`,
   
   // User endpoints
   USER: (userId) => `${DJANGO_API_URL}/api/users/${userId}`,
@@ -36,6 +36,10 @@ export const API_ENDPOINTS = {
   
   // News
   NEWS: `${DJANGO_API_URL}/api/news/`,
+  
+  // Documents
+  DOCUMENTS: `${DJANGO_API_URL}/api/documents/`,
+  DOCUMENTS_BY_AADHAR: (aadhar) => `${DJANGO_API_URL}/api/documents/${aadhar}/`,
 };
 
 // Common headers

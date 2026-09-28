@@ -88,7 +88,7 @@
 //           </View>
 //         </View>
         
-//         <Text style={styles.greetingText}>hello, nitesh</Text>
+//         <Text style={styles.greetingText}>hello, janhavi</Text>
         
 //         <View style={styles.searchBarContainer}>
 //           <Text style={styles.searchPlaceholder}>Search</Text>
@@ -965,7 +965,7 @@
 //           </View>
 //         </View>
         
-//         <Text style={styles.greetingText}>{t.hello}, nitesh</Text>
+//         <Text style={styles.greetingText}>{t.hello}, janhavi</Text>
         
 //         <View style={styles.searchBarContainer}>
 //           <Text style={styles.searchPlaceholder}>{t.search}</Text>
@@ -1771,7 +1771,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { authenticatedFetch } from '../Tokenutils';
+import { authenticatedFetch, clearTokens, parseJwt } from '../Tokenutils';
 // Import all your screen components
 import { AuthChoiceScreen, SignInScreen } from '../AuthScreens';
 import ChatbotScreen from '../chatbot';
@@ -2080,7 +2080,7 @@ const DashboardHomeScreen = ({ onNavigate, onLogout, language, setShowLanguageMo
           </View>
         </View>
         
-        <Text style={styles.greetingText}>{t.hello}, nitesh</Text>
+        <Text style={styles.greetingText}>{t.hello}, janhavi</Text>
         
         <View style={styles.searchBarContainer}>
           <Text style={styles.searchPlaceholder}>{t.search}</Text>
@@ -2253,7 +2253,7 @@ export const DashboardScreen = () => {
       console.log('Attempting login with:', mobile);
       
       const response = await authenticatedFetch(
-        'https://b96570f5b678.ngrok-free.app/api/auth/token/',
+        'https://raylene-unexpansive-krystal.ngrok-free.dev/api/auth/token/',
         {
           method: 'POST',
           headers: { 
@@ -2292,6 +2292,13 @@ export const DashboardScreen = () => {
       await AsyncStorage.setItem('@access_token', data.access);
       await AsyncStorage.setItem('@refresh_token', data.refresh);
       
+      const payload = parseJwt(data.access);
+      const userId = payload?.user_id || payload?.sub || payload?.id;
+      if (userId) {
+        await AsyncStorage.setItem('@user_id', String(userId));
+        console.log('User ID stored from login:', userId);
+      }
+      
       setIsAuthenticated(true);
       Alert.alert(t.success, t.loginSuccessful);
     } catch (error) {
@@ -2312,8 +2319,7 @@ export const DashboardScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('@access_token');
-              await AsyncStorage.removeItem('@refresh_token');
+              await clearTokens();
               setIsAuthenticated(false);
               setAuthScreen('choice');
               setScreen('dashboard');
@@ -2911,3 +2917,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default DashboardScreen;

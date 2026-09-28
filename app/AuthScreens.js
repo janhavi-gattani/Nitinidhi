@@ -291,7 +291,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
@@ -300,6 +299,7 @@ import {
     Alert,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // --- AUTH CHOICE SCREEN ---
@@ -681,3 +681,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+export default function AuthScreens() {
+  return null;
+}

@@ -63,6 +63,10 @@ export const getDocumentByType = (userDocuments, documentType) => {
   });
 };
 
+export default function documentChecker() {
+  return null;
+}
+
 
 
 

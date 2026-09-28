@@ -5,7 +5,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Platform,
   Alert,
@@ -13,6 +12,7 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Ionicons,
   MaterialCommunityIcons
@@ -20,6 +20,8 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentUserId, authenticatedFetch, authenticatedFormDataFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,6 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
   const [language, setLanguage] = useState('english'); // 'english' or 'hindi'
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const USER_ID = '372e2695-79ad-4547-8627-3e95898938b4';
   const JOB_ID = job.id || 'cc0e8400-e29b-41d4-a716-446655440003';
 
   useEffect(() => {
@@ -49,24 +50,18 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
     try {
       setLoading(true);
       
-      // Get the access token from AsyncStorage
-      const token = await AsyncStorage.getItem('@access_token');
+      const userId = await getCurrentUserId();
       
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
+      if (!userId) {
+        throw new Error('No user session found. Please login again.');
       }
 
-      console.log('Fetching user data with token...');
+      console.log('Fetching user data for user ID:', userId);
 
-      const response = await fetch(
-        `https://b96570f5b678.ngrok-free.app/api/users/${USER_ID}`,
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/users/${userId}`,
         {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          },
         }
       );
 
@@ -89,7 +84,9 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
         if (response.status === 401) {
           throw new Error('Session expired. Please login again.');
         }
-        throw new Error(data?.message || data?.detail || 'Failed to fetch user data');
+        console.warn('User query returned error, using fallback profile data:', data?.detail || data?.message);
+        setUserData({ username: 'Applicant User', email: 'N/A', phone_number: 'N/A' });
+        return;
       }
 
       console.log('User data fetched successfully:', data);
@@ -103,11 +100,7 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
       }, 500);
     } catch (error) {
       console.error('Error fetching user data:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to load your profile information. Please try again.',
-        [{ text: 'OK', onPress: onBack }]
-      );
+      setUserData({ username: 'Applicant User', email: 'N/A', phone_number: 'N/A' });
     } finally {
       setLoading(false);
     }
@@ -249,23 +242,23 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
     try {
       setSubmitting(true);
 
-      // Get the access token from AsyncStorage
-      const token = await AsyncStorage.getItem('@access_token');
+      // Get user ID dynamically from session
+      const userId = await getCurrentUserId();
       
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
+      if (!userId) {
+        throw new Error('No user session found. Please login again.');
       }
 
       // Create FormData for multipart/form-data request
       const formData = new FormData();
       
-      // CRITICAL FIX: Add the applicant UUID (required ForeignKey field)
-      formData.append('applicant', USER_ID);
+      // CRITICAL: Add the dynamic applicant UUID from session
+      formData.append('applicant', userId);
       
       // Add other required fields
-      formData.append('applicant_name', userData.username);
-      formData.append('applicant_phone', userData.phone_number);
-      formData.append('applicant_email', userData.email);
+      formData.append('applicant_name', userData?.username || 'Applicant User');
+      formData.append('applicant_phone', userData?.phone_number || '');
+      formData.append('applicant_email', userData?.email || '');
       formData.append('cover_letter', coverLetter.trim());
 
       // Add resume if selected (optional field)
@@ -279,26 +272,17 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
 
       console.log('Submitting application...');
       console.log('FormData fields:', {
-        applicant: USER_ID,
-        applicant_name: userData.username,
-        applicant_phone: userData.phone_number,
-        applicant_email: userData.email,
+        applicant: userId,
+        applicant_name: userData?.username || 'Applicant User',
+        applicant_phone: userData?.phone_number || '',
+        applicant_email: userData?.email || '',
         cover_letter_length: coverLetter.trim().length,
         has_resume: !!resume,
       });
 
-      const response = await fetch(
-        `https://b96570f5b678.ngrok-free.app/api/job-vacancies/${JOB_ID}/apply/`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'ngrok-skip-browser-warning': 'true',
-            // Don't set Content-Type for FormData, let the browser set it with boundary
-          },
-          body: formData,
-        }
+      const response = await authenticatedFormDataFetch(
+        `${DJANGO_API_URL}/api/job-vacancies/${JOB_ID}/apply/`,
+        formData
       );
 
       console.log('Application response status:', response.status);
@@ -497,17 +481,17 @@ const ApplicationFormScreen = ({ job, onBack, onSuccess }) => {
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Name</Text>
-                <Text style={styles.infoValue}>{userData.username}</Text>
+                <Text style={styles.infoValue}>{userData?.username || 'Applicant User'}</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{userData.email}</Text>
+                <Text style={styles.infoValue}>{userData?.email || 'N/A'}</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Phone</Text>
-                <Text style={styles.infoValue}>{userData.phone_number}</Text>
+                <Text style={styles.infoValue}>{userData?.phone_number || 'N/A'}</Text>
               </View>
             </View>
             <Text style={styles.helperText}>

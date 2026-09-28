@@ -104,3 +104,5 @@ Body: { phone, profile: { fullName, age, ... } }
 Response: { success: true, user: { id, phone, profile } }
 */
 
+export default authAPI;
+

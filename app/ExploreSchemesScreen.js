@@ -4,16 +4,18 @@ import {
   Text,
   ScrollView,
   TextInput,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SchemeDetailsScreen from './SchemeDetailsScreen';
+import { authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 const EligibleSchemesScreen = ({ onBack, initialCategory = 'All' }) => {
   const [currentScreen, setCurrentScreen] = useState('list');
@@ -39,19 +41,8 @@ const EligibleSchemesScreen = ({ onBack, initialCategory = 'All' }) => {
     try {
       setLoading(true);
       
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
-      const response = await fetch('https://cdfd8e09fcfe.ngrok-free.app/api/schemes', {
+      const response = await authenticatedFetch(`${DJANGO_API_URL}/api/schemes`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true'
-        }
       });
 
       console.log('Schemes response status:', response.status);

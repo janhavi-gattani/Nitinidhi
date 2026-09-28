@@ -1165,6 +1165,8 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentUserId, authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 
 // Translations object
 const translations = {
@@ -1446,8 +1448,6 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const voiceEnabledRef = useRef(voiceEnabled);
-
-  const USER_ID = '372e2695-79ad-4547-8627-3e95898938b4';
   const t = translations[language];
 
   // Get category options with translations
@@ -1464,25 +1464,40 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
     { value: 'land_disputes', label: t.landDisputes },
   ];
 
-  // Location options (names remain in original language)
-  const LOCATIONS = [
-    { id: 'a4a7c926-440b-452a-b14f-90602555117b', name: 'Ambegaon' },
-    { id: '550e8400-e29b-41d4-a716-446655440003', name: 'Baramati' },
-    { id: 'd4b567f8-4ec4-4332-8d16-91a89cdae82e', name: 'Bhor' },
-    { id: 'e54ffd2b-a5eb-4c43-bba9-6cce694f034a', name: 'Daund' },
-    { id: '8b9e0ada-585f-4706-abd8-ba71bbc58dc2', name: 'Haveli' },
-    { id: '9d309ddd-9bd1-476b-b6a8-44ccecb7cda0', name: 'Indapur' },
-    { id: 'bb5ee307-05c5-41eb-9c4c-f2b75475495c', name: 'Junnar' },
-    { id: '550e8400-e29b-41d4-a716-446655440004', name: 'Khed' },
-    { id: 'a4d6b520-0d8c-4646-bbde-4131accfcad0', name: 'Malegaon' },
-    { id: '7cc11935-1954-4b1e-81b2-5a50f4f6f68b', name: 'Maval' },
-    { id: '550e8400-e29b-41d4-a716-446655440005', name: 'Mulshi' },
-    { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Pune City' },
-    { id: '42c89214-b48d-4893-86d1-ac868b24c5a0', name: 'Purandhar' },
-    { id: '88af3126-7492-4c6d-941d-24876fbd97ab', name: 'Rajgurunagar' },
-    { id: '550e8400-e29b-41d4-a716-446655440002', name: 'Shirur' },
-    { id: '69b00002-26fb-4e6b-8510-6bda902299ca', name: 'Velhe' },
-  ];
+  // Dynamic Location options fetched from API
+  const [locationsList, setLocationsList] = useState([
+    { id: '5ca7e581-3f0a-45b4-aa1a-50daa397c02a', name: 'bibwewadi (Pune)' },
+    { id: 'e72c08a2-0a7b-46f4-8792-7ad2cd1bcce1', name: 'vasai (palghar)' },
+  ]);
+
+  const fetchLocations = async () => {
+    try {
+      console.log('Fetching locations from backend...');
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/locations/`,
+        {
+          method: 'GET',
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const results = data.results || data || [];
+        if (Array.isArray(results) && results.length > 0) {
+          const mapped = results.map(loc => ({
+            id: loc.id,
+            name: `${loc.name}${loc.district ? ` (${loc.district})` : ''}`,
+            rawName: loc.name
+          }));
+          console.log('Locations fetched successfully:', mapped);
+          setLocationsList(mapped);
+          return mapped;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching locations API:', err);
+    }
+    return null;
+  };
 
   useEffect(() => {
     voiceEnabledRef.current = voiceEnabled;
@@ -1533,23 +1548,21 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
     try {
       setLoading(true);
       
-      const token = await AsyncStorage.getItem('@access_token');
+      const userId = await getCurrentUserId();
       
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
+      if (!userId) {
+        throw new Error('No user session found. Please login again.');
       }
 
-      console.log('Fetching user data with token...');
+      console.log('Fetching user data for user ID:', userId);
 
-      const response = await fetch(
-        `https://b96570f5b678.ngrok-free.app/api/users/${USER_ID}`,
+      // Fetch locations dynamically
+      await fetchLocations();
+
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/users/${userId}`,
         {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          },
         }
       );
 
@@ -1570,11 +1583,25 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
         if (response.status === 401) {
           throw new Error('Session expired. Please login again.');
         }
-        throw new Error(data?.message || data?.detail || 'Failed to fetch user data');
+        console.warn('User query returned error, using fallback profile data:', data?.detail || data?.message);
+        setUserData({ username: 'Citizen User', phone_number: 'N/A' });
+        return;
       }
 
       console.log('User data fetched successfully:', data);
       setUserData(data);
+
+      if (data?.panchayat_name && (!location || location === '')) {
+        const match = locationsList.find(l => 
+          l.name.toLowerCase().includes(data.panchayat_name.toLowerCase()) || 
+          (l.rawName && l.rawName.toLowerCase() === data.panchayat_name.toLowerCase())
+        );
+        if (match) {
+          setLocation(match.id);
+          setLocationLabel(match.name);
+          console.log('Auto-selected location from user profile:', match.name);
+        }
+      }
       
       setTimeout(() => {
         if (voiceEnabled) {
@@ -1583,11 +1610,8 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
       }, 500);
     } catch (error) {
       console.error('Error fetching user data:', error);
-      Alert.alert(
-        t.error,
-        error.message || 'Failed to load your profile information. Please try again.',
-        [{ text: t.ok, onPress: onBack }]
-      );
+      // Fallback user data so the form can still be used without crashing
+      setUserData({ username: 'Citizen User', phone_number: 'N/A' });
     } finally {
       setLoading(false);
     }
@@ -1731,33 +1755,24 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
     try {
       setSubmitting(true);
 
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
       const complaintData = {
         title: title.trim(),
         description: description.trim(),
         category: category,
         location: location,
-        citizen_name: userData.username,
-        citizen_phone: userData.phone_number,
+        citizen_name: userData?.username || 'Citizen User',
+        citizen_phone: userData?.phone_number || '',
         is_urban: isUrban,
       };
 
       console.log('Submitting complaint:', complaintData);
 
-      const response = await fetch(
-        'https://b96570f5b678.ngrok-free.app/api/complaints/',
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/complaints/`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
-            'ngrok-skip-browser-warning': 'true',
           },
           body: JSON.stringify(complaintData),
         }
@@ -1784,7 +1799,16 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
         if (response.status === 401) {
           throw new Error('Session expired. Please login again.');
         }
-        throw new Error(result?.message || result?.detail || 'Failed to submit complaint');
+        let errMsg = result?.message || result?.detail;
+        if (!errMsg && typeof result === 'object') {
+          const keys = Object.keys(result);
+          if (keys.length > 0) {
+            const field = keys[0];
+            const val = Array.isArray(result[field]) ? result[field].join(', ') : result[field];
+            errMsg = `${field}: ${val}`;
+          }
+        }
+        throw new Error(errMsg || 'Failed to submit complaint');
       }
       
       Alert.alert(
@@ -1970,12 +1994,12 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{t.name}</Text>
-              <Text style={styles.infoValue}>{userData.username}</Text>
+              <Text style={styles.infoValue}>{userData?.username || 'Citizen User'}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{t.phone}</Text>
-              <Text style={styles.infoValue}>{userData.phone_number}</Text>
+              <Text style={styles.infoValue}>{userData?.phone_number || 'N/A'}</Text>
             </View>
           </View>
           <Text style={styles.helperText}>{t.cannotEdit}</Text>
@@ -2200,7 +2224,7 @@ const ComplaintFormScreen = ({ onBack, onSuccess }) => {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.dropdownModalList}>
-              {LOCATIONS.map((loc) => (
+              {locationsList.map((loc) => (
                 <TouchableOpacity
                   key={loc.id}
                   style={[

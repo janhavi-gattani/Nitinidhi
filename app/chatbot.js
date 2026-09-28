@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
+import { authenticatedFetch } from './Tokenutils';
+import { DJANGO_API_URL } from './Config';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,8 +17,9 @@ import {
   View,
 } from 'react-native';
 
-// Replace with your Gemini API key
-const GEMINI_API_KEY = 'AIzaSyDMMxzemaTCMWyfYPULsPG5avkanYFjTq4';
+// Gemini API key - loaded from environment variable (set EXPO_PUBLIC_GEMINI_API_KEY in .env)
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+
 
 const ChatbotScreen = ({ onBack }) => {
   const [messages, setMessages] = useState([
@@ -65,7 +68,7 @@ const ChatbotScreen = ({ onBack }) => {
     try {
       console.log('Testing Gemini API key...');
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: {
@@ -106,22 +109,10 @@ const ChatbotScreen = ({ onBack }) => {
 
   const fetchAllSchemes = async () => {
     try {
-      setIsInitializing(true);
-      const token = await AsyncStorage.getItem('@access_token');
-      
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(
-        'https://b96570f5b678.ngrok-free.app/api/schemes',
+      const response = await authenticatedFetch(
+        `${DJANGO_API_URL}/api/schemes`,
         {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-          }
         }
       );
 
@@ -371,7 +362,10 @@ ${knowledgeContext}`;
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
         },
         safetySettings: [
           {
@@ -394,7 +388,7 @@ ${knowledgeContext}`;
       };
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: {
@@ -442,16 +436,24 @@ ${knowledgeContext}`;
       const data = await response.json();
       console.log('✅ Response received successfully');
       
+      const candidate = data.candidates?.[0];
+
       // Check for blocked content
-      if (data.candidates && data.candidates[0]?.finishReason === 'SAFETY') {
+      if (candidate?.finishReason === 'SAFETY') {
         console.warn('Response blocked by safety filters');
         return language === 'hi'
           ? 'क्षमा करें, मैं इस प्रश्न का उत्तर नहीं दे सकता। कृपया कुछ और पूछें।'
           : 'Sorry, I cannot answer this question. Please try asking something else.';
       }
       
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-        return data.candidates[0].content.parts[0].text;
+      if (candidate?.content?.parts) {
+        const fullResponse = candidate.content.parts
+          .filter(part => part.text)
+          .map(part => part.text)
+          .join('');
+        if (fullResponse.trim()) {
+          return fullResponse.trim();
+        }
       }
       
       console.error('Invalid response format:', JSON.stringify(data));
