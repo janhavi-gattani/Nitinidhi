@@ -1,305 +1,241 @@
-# Niti Nidhi
+# 🏛️ Niti Nidhi
 
-Niti Nidhi is a multi-module digital governance application designed to help citizens discover government schemes, apply for services, track applications, raise complaints, access local news, view employment opportunities, and interact with an AI assistant. The repository contains both a mobile frontend built with Expo React Native and a Node.js backend API that powers the app’s services.
-
-This project is structured as a hybrid app with two navigation approaches:
-- Expo Router-based screens under the app/ directory
-- A separate React Navigation implementation under src/ for a simpler screen-based shell
-
-The codebase is intended for prototyping, demos, and extension into a production-ready citizen service platform.
+> A citizen-first digital governance platform to discover government schemes, apply for services, track applications, raise grievances, access local news, explore jobs, and interact with an AI chatbot — all in one place.
 
 ---
 
-## 1. Project Overview
+## 📱 What is Niti Nidhi?
 
-### Purpose
-The application aims to provide a single platform for citizens to:
-- browse and understand government welfare schemes
-- submit scheme applications
-- monitor application status
-- submit public grievances/complaints
-- read local and state-level news updates
-- explore employment opportunities
-- use a multilingual chatbot for guidance
+**Niti Nidhi** is a mobile app built with **Expo React Native** + a **Node.js backend** that bridges citizens with government services. It supports:
 
-### Target Users
-- Citizens seeking government services
-- Rural and semi-urban users who need simplified access to public schemes
-- Administrators or stakeholders who may manage news and service content
-
-### Project Type
-- Mobile app frontend: React Native + Expo
-- Backend API: Node.js + Express
-- Authentication: Firebase Auth (frontend) and JWT-based backend auth patterns
-- Storage: JSON files in the backend for lightweight demo persistence
-- AI integration: Ollama-based chatbot service
+- 🏷️ Browse & apply for government welfare schemes
+- 📋 Track application status
+- 📣 Submit public grievances/complaints
+- 📰 Read local & state-level news
+- 💼 Explore employment opportunities
+- 🤖 Multilingual AI chatbot (powered by Ollama)
+- 🔐 Firebase-based authentication
 
 ---
 
-## 2. Tech Stack
+## 🧰 Tech Stack
 
-### Frontend
-- React Native
-- Expo SDK
-- Expo Router
-- React Navigation
-- AsyncStorage
-- Firebase SDK for authentication and Firestore access
-- Expo Image Picker, File System, Document Picker, Speech, Sharing
-- Gluestack UI components
-- Lucide icons
-
-### Backend
-- Node.js
-- Express.js
-- dotenv
-- CORS
-- JWT
-- Axios
-- Firebase Admin SDK
-- Multer (prepared for file uploads)
-- Express Validator
-- Ollama integration through REST API
-
-### Development Tools
-- ESLint
-- TypeScript support
-- Expo EAS configuration
+| Layer | Technology |
+|---|---|
+| Mobile Frontend | React Native + Expo SDK |
+| Navigation | Expo Router + React Navigation |
+| Auth | Firebase Auth (phone/email) |
+| Backend | Node.js + Express.js |
+| AI Chatbot | Ollama (local LLM) |
+| Storage | JSON files (lightweight, demo-ready) |
+| Firebase Admin | Firestore integration |
 
 ---
 
-## 3. Repository Structure
+## 📁 Project Structure
 
-```text
-Techfest-25/
-├── App.js
-├── app.json
-├── package.json
-├── tsconfig.json
-├── eslint.config.js
-├── .env
-├── assets/
+```
+Nitinidhi/
+├── App.js                  # App entry point
+├── app.json                # Expo config
+├── package.json            # Frontend dependencies
+├── .env                    # Environment variables (DO NOT commit)
 ├── app/
-│   ├── _layout.js
-│   ├── ApplicationFormScreen.js
-│   ├── AuthScreens.js
-│   ├── chatbot.js
-│   ├── ComplaintDetailsScreen.js
-│   ├── ComplaintFormScreen.js
-│   ├── Config.js
-│   ├── DocumentsScreen.js
+│   ├── _layout.js          # Root layout + onboarding logic
+│   ├── Config.js           # API URLs (update this for your setup)
+│   ├── AuthScreens.js      # Login / sign-up screens
+│   ├── onboarding.js       # First-time onboarding flow
+│   ├── SchemesScreen.js    # Government schemes list
+│   ├── SchemeDetailsScreen.js
 │   ├── EligibleSchemesScreen.js
-│   ├── ExploreSchemes.js
-│   ├── ExploreSchemesScreen.js
+│   ├── ApplicationFormScreen.js
+│   ├── StatusScreen.js     # Application status tracking
+│   ├── ComplaintFormScreen.js
+│   ├── ComplaintDetailsScreen.js
+│   ├── NewsScreen.js
+│   ├── NewsDetailsScreen.js
 │   ├── HelplineScreen.js
 │   ├── JobDetailsScreen.js
-│   ├── JobUpdateScreen.js
-│   ├── NewsDetailsScreen.js
-│   ├── NewsScreen.js
-│   ├── onboarding.js
+│   ├── DocumentsScreen.js
+│   ├── chatbot.js          # AI chatbot screen
 │   ├── ProfileScreen.js
-│   ├── SchemeDetailsScreen.js
-│   ├── SchemesScreen.js
-│   ├── StatusScreen.js
-│   ├── Tokenutils.js
-│   ├── (tabs)/
-│   ├── api/
-│   ├── components/
-│   ├── config/
-│   ├── data/
-│   └── utils/
-├── src/
-│   ├── navigation/
-│   └── screens/
+│   ├── (tabs)/             # Tab navigation screens
+│   ├── api/                # Frontend API helpers
+│   ├── components/         # Shared UI components
+│   ├── config/             # Firebase client config
+│   └── utils/              # Utility functions
 └── backend/
-    ├── server.js
-    ├── package.json
-    ├── README.md
+    ├── server.js           # Express server entry point
+    ├── package.json        # Backend dependencies
     ├── config/
-    ├── data/
+    │   └── firebase.js     # Firebase Admin SDK setup
     ├── routes/
-    ├── services/
+    │   ├── auth.js         # Auth endpoints (proxies to Django JWT)
+    │   ├── schemes.js      # Schemes + applications
+    │   ├── complaints.js   # Grievance management
+    │   ├── news.js         # News CRUD
+    │   ├── employment.js   # Jobs API
+    │   ├── chatbot.js      # Ollama AI integration
+    │   └── documents.js    # Documents API
+    ├── services/           # Business logic
+    ├── data/               # JSON file storage (auto-created)
     └── storage/
+        └── localStorage.js # Lightweight JSON persistence layer
 ```
 
 ---
 
-## 4. Frontend Architecture
+## ⚙️ Prerequisites
 
-### Entry Point
-- [App.js](App.js) is the app entry file and renders the navigator.
-- The root navigation logic is provided through the app-level stack setup in [app/_layout.js](app/_layout.js).
+Make sure you have these installed before getting started:
 
-### App Router Implementation
-The folder [app](app) contains a broad set of screens and components using Expo Router. These screens include:
-- onboarding flow
-- authentication screens
-- scheme browsing and detail screens
-- application forms
-- document management
-- complaint submission and details
-- news and helpline modules
-- chatbot integration
-
-### React Navigation Implementation
-The folder [src](src) contains a smaller and more structured navigation shell:
-- [src/navigation/AppNavigator.js](src/navigation/AppNavigator.js) defines the main stack navigator.
-- [src/screens/HomeScreen.js](src/screens/HomeScreen.js) provides a simple home dashboard with navigation cards.
-
-### Important Note
-The repository currently contains both Expo Router-based files under [app](app) and a React Navigation-based lightweight shell under [src](src). This means the project is in a transitional state and some areas are still being developed or partially integrated.
+- [Node.js](https://nodejs.org/) (v18 or newer recommended)
+- [npm](https://www.npmjs.com/) (comes with Node.js)
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+  ```bash
+  npm install -g expo-cli
+  ```
+- [Expo Go app](https://expo.dev/go) on your phone (to preview the app)
+- [Ollama](https://ollama.com/) — only if you want the AI chatbot to work
 
 ---
 
-## 5. Core Features
+## 🚀 Getting Started
 
-### 5.1 Onboarding
-The onboarding experience is managed through [app/onboarding.js](app/onboarding.js) and the layout logic in [app/_layout.js](app/_layout.js). It uses AsyncStorage to remember whether the user has completed onboarding.
+### 1. Clone the Repository
 
-### 5.2 Authentication
-Authentication-related logic is present in:
-- [app/AuthScreens.js](app/AuthScreens.js)
-- [app/api/auth.js](app/api/auth.js)
-- [app/config/firebase.js](app/config/firebase.js)
-- [backend/routes/auth.js](backend/routes/auth.js)
+```bash
+git clone https://github.com/janhavi-gattani/Nitinidhi.git
+cd Nitinidhi
+```
 
-The frontend uses Firebase Auth for phone-based or credential-based flows, while the backend exposes authentication endpoints that proxy or prepare JWT-based sessions.
+### 2. Set Up Environment Variables
 
-### 5.3 Government Schemes
-The app includes screens and routes for:
-- browsing schemes
-- viewing scheme details
-- eligibility and benefits information
-- applying for a scheme
+Create a `.env` file in the **root of the project** (same folder as `package.json`):
 
-Backend support is implemented in [backend/routes/schemes.js](backend/routes/schemes.js), which provides:
-- list of schemes
-- detail lookup by ID
-- application submission
-- application history lookup
+```env
+# ── Frontend (Expo) ──────────────────────────────────
+# Your Django/backend API URL (use ngrok if running locally)
+EXPO_PUBLIC_API_URL=https://your-ngrok-url.ngrok-free.app
 
-### 5.4 Complaints and Grievances
-Complaint functionality is implemented through [backend/routes/complaints.js](backend/routes/complaints.js), which proxies complaint submission and retrieval to an external API. This is useful for integrating with public grievance management systems.
+# Firebase Web App config (get from Firebase Console > Project Settings)
+EXPO_PUBLIC_FIREBASE_API_KEY=your-firebase-api-key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+EXPO_PUBLIC_FIREBASE_APP_ID=your-app-id
 
-### 5.5 News and Updates
-The app includes a news experience through [backend/routes/news.js](backend/routes/news.js) and [app/NewsScreen.js](app/NewsScreen.js). News can be filtered by level and location and is stored by the backend in JSON files.
+# Gemini API key (optional)
+EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key
 
-### 5.6 Employment Opportunities
-Employment-related APIs and storage are implemented in [backend/routes/employment.js](backend/routes/employment.js) and [backend/storage/localStorage.js](backend/storage/localStorage.js). They support listing, filtering, and publishing opportunities.
+# ── Backend ──────────────────────────────────────────
+# Ollama local LLM config
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 
-### 5.7 Chatbot
-The chatbot endpoint is implemented in [backend/routes/chatbot.js](backend/routes/chatbot.js). It:
-- accepts an incoming message
-- builds a prompt with language-aware instructions
-- calls an Ollama local model via the Ollama REST API
-- returns either a normal response or a JSON redirect action for scheme applications
+# JWT secret (use any strong random string)
+JWT_SECRET=your-very-strong-secret-key
 
-### 5.8 Voice Guidance
-Voice guidance utilities are present in [app/components/VoiceGuidance.js](app/components/VoiceGuidance.js) and [app/components/VoiceGuidanceUtils.js](app/components/VoiceGuidanceUtils.js), enabling accessibility-focused spoken assistance.
+# Node environment
+NODE_ENV=development
 
----
+# Backend server port
+PORT=5000
+```
 
-## 6. Backend Architecture
+> **Never commit your `.env` file.** It is already listed in `.gitignore`.
 
-### Server Entry
-The main server is [backend/server.js](backend/server.js). It:
-- initializes Express
-- enables CORS
-- loads environment variables
-- initializes Firebase Admin
-- mounts route modules
-- exposes a health check endpoint
-
-### Route Modules
-The backend exposes these primary routes:
-- /api/auth
-- /api/users
-- /api/schemes
-- /api/applications
-- /api/documents
-- /api/chatbot
-- /api/complaints
-- /api/employment
-- /api/news
-
-### Storage Layer
-The backend uses [backend/storage/localStorage.js](backend/storage/localStorage.js) as a lightweight persistence layer. It creates and maintains JSON files for:
-- complaints
-- applications
-- news
-- employment opportunities
-
-This makes the backend easy to run locally without a database, but it is not suitable for production-scale concurrency or durability by itself.
-
-### Firebase Integration
-Backend Firebase setup is implemented in [backend/config/firebase.js](backend/config/firebase.js). It expects a service account JSON file named serviceAccountKey.json inside the backend directory. Without it, Firebase initialization is skipped and the backend falls back to non-Firebase behavior.
+How to get Firebase config values:
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Open your project → **Project Settings** (gear icon)
+3. Scroll to **Your apps** → select your Web app → copy the config values
 
 ---
 
-## 7. Environment Configuration
+### 3. Update API URLs in `app/Config.js`
 
-The project uses environment variables from the root [.env](.env) file and the backend environment configuration.
+Open `app/Config.js` and update the URLs to match your running backend:
 
-### Root Frontend Variables
-The frontend environment file contains:
-- EXPO_PUBLIC_API_URL
-- EXPO_PUBLIC_FIREBASE_API_KEY
-- EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
-- EXPO_PUBLIC_FIREBASE_PROJECT_ID
-- EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
-- EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-- EXPO_PUBLIC_FIREBASE_APP_ID
+```js
+// Your Django backend URL (ngrok URL if running locally)
+export const DJANGO_API_URL = 'https://your-ngrok-url.ngrok-free.app';
 
-### Backend Variables
-The backend environment configuration includes:
-- OLLAMA_BASE_URL
-- OLLAMA_MODEL
-- JWT_SECRET
-- NODE_ENV
-- PORT
-
-### Important Setup Note
-The app includes hardcoded or environment-based URLs in [app/Config.js](app/Config.js), including:
-- a Django base URL
-- a Node backend URL
-
-These values may need to be updated depending on your deployment target.
+// Your Node.js backend URL
+export const NODE_API_URL = 'http://localhost:5000';
+// OR if deployed: 'https://your-render-url.onrender.com'
+```
 
 ---
 
-## 8. Installation and Running
+### 4. Install Frontend Dependencies
 
-### Prerequisites
-- Node.js and npm
-- Expo CLI / Expo Go
-- A Firebase project (optional but strongly recommended for auth integration)
-- An Ollama instance running locally if you want the chatbot to work end-to-end
+From the **project root**:
 
-### Install Root Dependencies
 ```bash
 npm install
 ```
 
-### Install Backend Dependencies
+---
+
+### 5. Install Backend Dependencies
+
 ```bash
 cd backend
 npm install
+cd ..
 ```
 
-### Run the Frontend
-From the project root:
+---
+
+### 6. (Optional) Set Up Firebase Admin for the Backend
+
+If you want Firebase Auth + Firestore integration in the backend:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) → Your Project → **Project Settings** → **Service Accounts**
+2. Click **"Generate new private key"** and download the JSON file
+3. Rename it to `serviceAccountKey.json`
+4. Place it inside the `backend/` folder
+
+> If `serviceAccountKey.json` is not present, the backend will still run but Firebase-related features will be skipped.
+
+---
+
+### 7. (Optional) Set Up Ollama for the AI Chatbot
+
+1. Download and install [Ollama](https://ollama.com/download)
+2. Pull the model and start the server:
+
 ```bash
-npm start
+# Pull the model
+ollama pull llama3.2
+
+# Start Ollama server
+ollama serve
 ```
 
-Useful Expo commands:
-```bash
-npm run android
-npm run ios
-npm run web
+Make sure your `.env` has:
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 ```
 
-### Run the Backend
+Other supported models:
+```env
+OLLAMA_MODEL=mistral
+OLLAMA_MODEL=phi3
+OLLAMA_MODEL=llama2
+OLLAMA_MODEL=gemma
+```
+
+---
+
+## ▶️ Running the App
+
+You need **two terminals** — one for the backend and one for the frontend.
+
+### Terminal 1 — Start the Backend
+
 ```bash
 cd backend
 npm start
@@ -311,172 +247,119 @@ cd backend
 npm run dev
 ```
 
-### Ollama Setup for Chatbot
-If you want the chatbot endpoint to work, make sure Ollama is installed and running:
-```bash
-ollama serve
+Backend runs at `http://localhost:5000`. Verify it works:
+```
+GET http://localhost:5000/health
 ```
 
-Then set the model in the environment file:
-```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+### Terminal 2 — Start the Frontend
+
+From the **project root**:
+
+```bash
+npm start
+```
+
+This opens the Expo Metro bundler. Then:
+- Press `a` → open on Android emulator
+- Press `i` → open on iOS simulator (macOS only)
+- Scan the **QR code** with [Expo Go](https://expo.dev/go) on your phone
+
+Other commands:
+```bash
+npm run android   # open on Android
+npm run ios       # open on iOS
+npm run web       # open in browser
 ```
 
 ---
 
-## 9. API Reference
+## 🌐 Backend API Reference
 
-### Authentication
-- POST /api/auth/token
-  - proxies credentials to a Django/JWT-style API
-- POST /api/auth/send-otp
-  - legacy OTP endpoint
-- POST /api/auth/verify-otp
-  - legacy OTP verification
-- POST /api/auth/register
-  - register/update user data
+Base URL: `http://localhost:5000`
 
-### Schemes
-- GET /api/schemes
-- GET /api/schemes/:id
-- POST /api/schemes/apply
-- GET /api/schemes/applications/my
-
-### Complaints
-- POST /api/complaints/submit
-- GET /api/complaints/my-complaints
-- GET /api/complaints/all
-- GET /api/complaints/:id
-- PUT /api/complaints/:id/status
-
-### News
-- GET /api/news
-- GET /api/news/:id
-- POST /api/news
-- PUT /api/news/:id
-- DELETE /api/news/:id
-- POST /api/news/seed-demo
-
-### Employment
-- GET /api/employment
-- GET /api/employment/:id
-- POST /api/employment
-- POST /api/employment/seed-demo
-
-### Documents
-- GET /api/documents/user-documents
-
-### Chatbot
-- POST /api/chatbot/chat
-
-### Health
-- GET /health
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Server health check |
+| `POST` | `/api/auth/token` | Login — proxies to Django JWT |
+| `GET` | `/api/schemes` | List all government schemes |
+| `GET` | `/api/schemes/:id` | Scheme details |
+| `POST` | `/api/schemes/apply` | Apply for a scheme |
+| `GET` | `/api/schemes/applications/my` | User's application history |
+| `POST` | `/api/complaints/submit` | Submit a grievance |
+| `GET` | `/api/complaints/my-complaints` | User's complaints |
+| `GET` | `/api/complaints/all` | All complaints (admin) |
+| `GET` | `/api/news` | Get news list |
+| `POST` | `/api/news` | Create a news entry |
+| `GET` | `/api/employment` | List job opportunities |
+| `POST` | `/api/employment` | Post a new job |
+| `GET` | `/api/documents/user-documents` | Get user documents |
+| `POST` | `/api/chatbot/chat` | Send message to AI chatbot |
 
 ---
 
-## 10. Data and Storage Model
+## 🔧 Troubleshooting
 
-### Local JSON Storage
-The backend stores persistence data in the [backend/data](backend/data) directory:
-- applications.json
-- complaints.json
-- employment.json
-- news.json
+### App can't connect to backend
+- Make sure the backend is running on port 5000
+- On a **physical device**, your phone and PC must be on the **same Wi-Fi network**
+- Change `NODE_API_URL` in `app/Config.js` to your machine's local IP, e.g.:
+  ```js
+  export const NODE_API_URL = 'http://192.168.1.5:5000';
+  ```
+- If using ngrok: run `ngrok http 5000` and update `EXPO_PUBLIC_API_URL` in `.env`
 
-### Typical Record Shapes
-- Application records include scheme metadata, user identifier, status, and submission timestamp.
-- Complaint records include title, category, description, location, status, and ticket metadata.
-- News records include level, location, priority, published date, and contact information.
-- Employment records include department, eligibility, salary, last date, and application instructions.
+### Firebase errors
+- Double-check all `EXPO_PUBLIC_FIREBASE_*` values in `.env`
+- Make sure **Phone Auth** or **Email/Password Auth** is enabled in Firebase Console → Authentication → Sign-in method
 
----
+### Chatbot not responding
+- Make sure Ollama is running: `ollama serve`
+- Check the model is downloaded: `ollama list`
+- Verify `OLLAMA_BASE_URL` and `OLLAMA_MODEL` in `.env`
 
-## 11. Key Files and Their Roles
-
-- [App.js](App.js): app entry point
-- [app/_layout.js](app/_layout.js): onboarding and route-based layout logic
-- [app/Config.js](app/Config.js): API URL and endpoint configuration
-- [app/api/auth.js](app/api/auth.js): frontend authentication API helpers
-- [app/config/firebase.js](app/config/firebase.js): Firebase client initialization
-- [src/navigation/AppNavigator.js](src/navigation/AppNavigator.js): React Navigation stack
-- [src/screens/HomeScreen.js](src/screens/HomeScreen.js): home screen UI
-- [backend/server.js](backend/server.js): backend startup and routing
-- [backend/routes/auth.js](backend/routes/auth.js): authentication endpoints
-- [backend/routes/schemes.js](backend/routes/schemes.js): scheme catalog and applications
-- [backend/routes/complaints.js](backend/routes/complaints.js): grievance proxy layer
-- [backend/routes/news.js](backend/routes/news.js): news management API
-- [backend/routes/employment.js](backend/routes/employment.js): jobs and opportunities API
-- [backend/routes/chatbot.js](backend/routes/chatbot.js): AI assistant integration
-- [backend/storage/localStorage.js](backend/storage/localStorage.js): lightweight persistence
-
----
-
-## 12. Deployment Notes
-
-### Expo App Deployment
-The app is configured for Expo with EAS metadata in [app.json](app.json). It can be built for Android and iOS using Expo Application Services.
-
-### Backend Deployment
-The backend is structured to run on services such as Render, Railway, or a VPS. For production, it is recommended to replace JSON file persistence with a real database such as:
-- MongoDB
-- PostgreSQL
-- Firestore
-
-### Production Considerations
-- secure JWT secret handling
-- proper CORS restrictions
-- real authentication and role-based authorization
-- persistent database instead of local JSON files
-- proper file upload storage instead of placeholder endpoints
-- monitoring and logging
-
----
-
-## 13. Current State and Caveats
-
-The repository is a strong prototype and demo project, but a few areas remain transitional:
-- some screens are implemented in the Expo Router structure while others are only shell screens in the React Navigation approach
-- backend persistence uses local JSON files, not a production database
-- Firebase Admin initialization requires serviceAccountKey.json
-- complaints are forwarded to a hardcoded external endpoint
-- chatbot depends on a local Ollama instance
-
-These are acceptable for development and demonstration but should be upgraded before public production use.
-
----
-
-## 14. Suggested Next Improvements
-
-- unify the frontend navigation stack into a single architecture
-- connect the UI to the backend consistently for all modules
-- replace local JSON storage with MongoDB or Firestore
-- add real document upload and storage
-- add analytics, monitoring, and crash reporting
-- implement proper role-based admin capabilities
-- add automated tests for routes and screens
-
----
-
-## 15. Quick Start Summary
-
+### Metro bundler issues
 ```bash
+npx expo start --clear    # clears Metro cache
+```
+
+### `node_modules` issues
+```bash
+rm -rf node_modules
 npm install
-cd backend && npm install
-cd ..
-npm start
 ```
-
-In another terminal:
-```bash
-cd backend
-npm start
-```
-
-If the chatbot is required, ensure Ollama is running before testing the /api/chatbot/chat route.
 
 ---
 
-## 16. License and Usage
+## 🚢 Deployment
 
-This repository appears to be a project for civic-tech and government-service information delivery. It should be used responsibly and aligned with local regulations and privacy expectations. Any deployment involving citizen data should include proper legal, privacy, and security review.
+### Backend — Deploy to Render / Railway
+1. Push code to GitHub
+2. Connect repo to [Render](https://render.com) or [Railway](https://railway.app)
+3. Set all backend environment variables in the dashboard (`OLLAMA_BASE_URL`, `JWT_SECRET`, `PORT`, etc.)
+4. Set **Build Command**: `npm install`
+5. Set **Start Command**: `node server.js`
+6. Update `NODE_API_URL` in `app/Config.js` with your deployed URL
+
+### Frontend — Build with Expo EAS
+```bash
+npm install -g eas-cli
+eas login
+eas build --platform android   # or ios
+```
+
+See [Expo EAS docs](https://docs.expo.dev/eas/) for full configuration.
+
+---
+
+## 📌 Important Notes
+
+- The backend uses **local JSON files** for storage (`backend/data/`). Good for demos — for production, migrate to MongoDB, PostgreSQL, or Firestore.
+- The repo has two navigation approaches (`app/` via Expo Router and `src/` via React Navigation). They are actively being unified.
+- The `backend/serviceAccountKey.json` file should **never** be committed to GitHub — add it to `.gitignore`.
+
+---
+
+## 📄 License
+
+Built for civic-tech and government-service delivery. Use responsibly and ensure compliance with local data privacy regulations before deploying citizen-facing features.
